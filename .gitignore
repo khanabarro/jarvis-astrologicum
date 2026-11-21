@@ -1,0 +1,22 @@
+# Tudo o que é pessoal fica fora do Git (o setup.py gera de novo)
+jarvis.config.json
+fontes.json
+CLAUDE.md
+.claude/
+.mcp.json
+
+# segredos, índice, grafo e cache
+servidor/segredos/
+servidor/cache/
+servidor/.venv/
+__pycache__/
+*.pyc
+
+# o seu conhecimento (notas, memória, artefatos e skills ficam só no seu Mac)
+conhecimento/**
+!conhecimento/
+!conhecimento/*/
+!conhecimento/*/.gitkeep
+
+.DS_Store
+*.log

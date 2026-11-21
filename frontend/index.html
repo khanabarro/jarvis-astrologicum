@@ -1,0 +1,1718 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jarvis Astrologicum · cluster vivo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,100;0,9..144,400;1,9..144,100;1,9..144,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #030304;
+    --panel: #0a0a0c;
+    --line: #23252a;
+    --text: #e6e8ec;
+    --muted: #8d929b;
+    --gold: #f2b64c;
+    --gold-soft: rgba(242, 182, 76, .16);
+    --blue: #a9c8f2;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; }
+  body { font-family: Inter, system-ui, -apple-system, sans-serif; color: var(--text); }
+
+  /* palco fixo de 1344×768 (o tamanho da referência), escalado para caber na janela */
+  #palco { position: absolute; left: 50%; top: 50%; width: 1344px; height: 768px; transform-origin: 0 0; }
+  canvas#ceu { position: absolute; inset: 0; width: 1344px; height: 768px; }
+
+  h1 { position: absolute; top: 17px; left: 30px; margin: 0; font-family: Fraunces, Georgia, serif; font-weight: 100; font-style: italic;
+       font-size: calc(18px * var(--fs, 1)); letter-spacing: .01em; color: var(--blue); pointer-events: none; }
+  h1::before { display: none !important; }
+  h1::before, h1::after { content: ""; display: inline-block; width: 70px; height: 1px; vertical-align: middle; margin: 0 14px;
+       background: linear-gradient(90deg, transparent, rgba(242,182,76,.55)); }
+  h1::after { background: linear-gradient(90deg, rgba(169,200,242,.55), transparent); }
+
+  .coluna { position: absolute; top: 57px; width: 251px; display: flex; flex-direction: column; gap: 14px; }
+  .esq { left: 28px; } .dir { left: 1048px; }
+  .card { background: rgba(10,11,14,.64); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); border: 1px solid rgba(40,43,50,.85); border-radius: 6px; padding: 12px 12px 10px; }
+  .card h2 { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; font-size: calc(13px * var(--fs, 1)); font-weight: 500; color: var(--blue); }
+  .card h2 svg { width: 16px; height: 16px; stroke: var(--blue); fill: none; stroke-width: 1.5; }
+  .card h2 .seta { margin-left: auto; color: var(--muted); font-size: calc(14px * var(--fs, 1)); }
+  .linha { display: flex; align-items: center; gap: 10px; padding: 6px 4px; font-size: calc(11px * var(--fs, 1)); border-radius: 4px; }
+  .linha .av { width: 26px; height: 26px; border-radius: 50%; background: #1a1c21; display: grid; place-items: center;
+               font-size: calc(10px * var(--fs, 1)); color: #b9bec7; flex: none; }
+  .linha b { display: block; font-weight: 400; color: var(--text); }
+  .linha small { color: var(--muted); font-size: calc(10px * var(--fs, 1)); }
+  .linha .hora { margin-left: auto; color: var(--muted); font-size: calc(10px * var(--fs, 1)); }
+  .linha.ativa { background: rgba(169,200,242,.08); border: 1px solid rgba(169,200,242,.35); }
+  .linha.ativa b, .linha.ativa .hora { color: var(--blue); }
+  .linha.ativa .av { background: rgba(169,200,242,.22); color: var(--blue); }
+  .agenda .linha { padding: 8px 4px; font-size: calc(11.5px * var(--fs, 1)); }
+  .agenda .ponto { width: 5px; height: 5px; border-radius: 50%; background: #5d6a80; }
+  .agenda .ativa-t { color: var(--blue); }
+  #janela-email { position: absolute; z-index: 8; left: 300px; top: 70px; width: 470px; max-height: 600px; display: none; flex-direction: column; gap: 10px;
+    padding: 14px 16px 12px; border-radius: 10px; background: rgba(12,13,17,.92); border: 1px solid rgba(169,200,242,.25); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    box-shadow: 0 18px 50px rgba(0,0,0,.5); font-size: calc(11.5px * var(--fs, 1)); }
+  #janela-email.aberta { display: flex; }
+  .je-topo { display: flex; align-items: center; gap: 10px; }
+  .je-topo .av { width: 30px; height: 30px; border-radius: 50%; background: rgba(169,200,242,.18); color: var(--blue); display: grid; place-items: center; font-size: 11px; flex: none; }
+  .je-tit { flex: 1; min-width: 0; } .je-tit b, .je-tit small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .je-tit b { color: #e6ecf6; font-weight: 500; } .je-tit small { color: var(--muted); margin-top: 2px; }
+  .je-x { background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 13px; padding: 2px 5px; border-radius: 4px; } .je-x:hover { color: var(--blue); background: rgba(169,200,242,.08); }
+  .je-corpo { overflow-y: auto; max-height: 300px; display: flex; flex-direction: column; gap: 10px; scrollbar-width: thin; }
+  .je-msg { background: rgba(255,255,255,.035); border-radius: 7px; padding: 8px 10px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .je-msg small { display: block; color: var(--muted); margin-bottom: 4px; }
+  #janela-email button { font: inherit; font-size: calc(10.5px * var(--fs, 1)); color: var(--blue); background: rgba(169,200,242,.1); border: 1px solid rgba(169,200,242,.28); border-radius: 6px; padding: 5px 9px; cursor: pointer; }
+  #janela-email button:hover:not(:disabled) { border-color: rgba(169,200,242,.6); }
+  #janela-email button:disabled { opacity: .45; cursor: default; }
+  #janela-email button.sec { color: var(--muted); background: none; border-color: var(--line); }
+  #janela-email button.perigo { color: #f0b4a8; border-color: rgba(240,150,130,.35); background: rgba(240,150,130,.07); }
+  #janela-email .je-x { border: 0; background: none; color: var(--muted); }
+  .je-acoes { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .je-arq { display: inline-flex; gap: 4px; }
+  #janela-email select, #janela-email input, #janela-email textarea { font: inherit; font-size: calc(11px * var(--fs, 1)); color: var(--text); background: rgba(255,255,255,.04); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; }
+  #janela-email select { max-width: 150px; }
+  .je-form { display: flex; flex-direction: column; gap: 6px; } .je-form[hidden] { display: none; }
+  .je-form textarea { resize: vertical; min-height: 80px; line-height: 1.45; }
+  .je-linha { display: flex; justify-content: flex-end; gap: 6px; }
+  .je-status { color: var(--muted); font-size: calc(10px * var(--fs, 1)); min-height: 13px; }
+  .msg.autoriza { background: rgba(214,187,134,.09); border: 1px solid rgba(214,187,134,.35); max-width: 92%; }
+  .msg.autoriza b { color: #ecd6aa; font-weight: 500; }
+  .msg.autoriza .onde { display: block; color: var(--muted); font-size: .92em; margin: 3px 0 5px; overflow-wrap: anywhere; }
+  .msg.autoriza pre { margin: 4px 0; padding: 6px 8px; max-height: 140px; overflow: auto; white-space: pre-wrap; font-family: ui-monospace, Menlo, monospace; font-size: .88em; border-radius: 5px; background: rgba(0,0,0,.25); }
+  .msg.autoriza pre.antes { color: #f0b4a8; } .msg.autoriza pre.depois { color: #b9e6c3; }
+  .msg.autoriza .bts { display: flex; gap: 6px; margin-top: 6px; }
+  .msg.autoriza button { font: inherit; font-size: .95em; padding: 4px 10px; border-radius: 5px; cursor: pointer; border: 1px solid rgba(214,187,134,.5); background: rgba(214,187,134,.15); color: #ecd6aa; }
+  .msg.autoriza button.nao { background: none; color: var(--muted); border-color: var(--line); }
+  .msg.autoriza.respondida button { display: none; }
+  .msg .continuar { display: inline-block; margin-top: 6px; font: inherit; font-size: .95em; padding: 4px 9px; border-radius: 5px; cursor: pointer; border: 1px solid rgba(169,200,242,.4); background: rgba(169,200,242,.1); color: var(--blue); }
+  #google-conectar { display: flex; flex-direction: column; gap: 4px; padding: 2px 4px 8px; }
+  #google-conectar[hidden] { display: none; }
+  #google-conectar button { align-self: flex-start; font: inherit; font-size: calc(10.5px * var(--fs, 1)); color: var(--blue); background: rgba(169,200,242,.1); border: 1px solid rgba(169,200,242,.35); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+  #google-conectar small { color: var(--muted); font-size: calc(9.5px * var(--fs, 1)); line-height: 1.4; }
+  #janela-email.larga { width: 640px; max-height: 640px; }
+  #janela-email.larga .je-corpo { max-height: 440px; }
+  .je-ver { display: flex; gap: 6px; margin-top: 7px; }
+  #janela-email .je-ver button { font-size: calc(10px * var(--fs, 1)); padding: 3px 8px; }
+  .je-msg iframe { display: block; width: 100%; height: 400px; border: 0; border-radius: 6px; background: #fff; margin-top: 6px; }
+  .je-anexos { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+  .je-anexos a { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 3px 8px; border-radius: 5px; border: 1px solid var(--line); color: var(--blue); text-decoration: none; font-size: .92em; background: rgba(169,200,242,.06); }
+  .je-anexos a:hover { border-color: rgba(169,200,242,.5); }
+  .je-anexos a span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+  .je-anexos a small { color: var(--muted); }
+  .entrada .mic { background: none; border: 0; padding: 0 4px; cursor: pointer; color: var(--muted); display: grid; place-items: center; }
+  .entrada .mic svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.6; }
+  .entrada .mic:hover { color: var(--blue); }
+  .entrada .mic.ouvindo { color: #f0a070; animation: pulsoMic 1.1s ease-in-out infinite; }
+  .entrada .mic[hidden] { display: none; }
+  @keyframes pulsoMic { 50% { opacity: .45; } }
+  .card .vazio { color: var(--muted); font-size: calc(10.5px * var(--fs, 1)); padding: 4px 4px 2px; line-height: 1.45; }
+  .card h2 .atualizar { margin-left: auto; font: inherit; font-size: 13px; line-height: 1; color: var(--muted); background: none; border: 0; padding: 2px 4px; cursor: pointer; border-radius: 4px; }
+  .card h2 .atualizar:hover { color: var(--blue); background: rgba(169,200,242,.08); }
+  .card h2 .atualizar.girando { animation: girar 1.1s linear infinite; }
+  @keyframes girar { to { transform: rotate(360deg); } }
+  .card h2 .quando-at { margin-left: auto; color: var(--muted); font-size: calc(9px * var(--fs, 1)); font-weight: 400; }
+  #gmail-lista .linha, #agenda-lista .linha { cursor: pointer; border-radius: 4px; }
+  #gmail-lista .linha:hover, #agenda-lista .linha:hover { background: rgba(169,200,242,.05); }
+  #gmail-lista .linha > span:nth-child(2) { min-width: 0; flex: 1; }
+  #gmail-lista b, #gmail-lista small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .agenda .dia { padding: 2px 4px 4px; color: var(--blue); font-size: calc(10.5px * var(--fs, 1)); }
+  .tarefa { cursor: pointer; }
+  .tarefa { display: flex; align-items: center; gap: 10px; padding: 6px 4px; font-size: calc(11.5px * var(--fs, 1)); }
+  .tarefa i { width: 14px; height: 14px; border: 1px solid #4a4d55; border-radius: 3px; flex: none; }
+  .tarefa.feita i { background: var(--blue); border-color: var(--blue); }
+  .tarefa.feita span { color: var(--muted); text-decoration: line-through; }
+  .pasta { display: flex; align-items: center; gap: 12px; padding: 8px 6px; font-size: calc(11.5px * var(--fs, 1)); border-radius: 4px; }
+  .pasta svg { width: 16px; height: 16px; stroke: #b9bec7; fill: none; stroke-width: 1.3; }
+  .pasta .seta { margin-left: auto; color: var(--muted); }
+  .pasta svg { stroke: var(--blue) !important; }
+  .pasta.ativa { background: rgba(169,200,242,.1); color: var(--blue); }
+  .pasta.ativa svg { fill: rgba(169,200,242,.4); }
+  .dir { height: 628px; }
+  .dir .card { display: flex; flex-direction: column; min-height: 0; transition: flex-grow .5s cubic-bezier(.22,1,.36,1); }
+  .dir .card h2 { flex: none; }
+  .projetos { flex: 0 1 auto; }
+  .projetos .corpo { max-height: 230px; overflow: hidden; transition: max-height .5s cubic-bezier(.22,1,.36,1), opacity .35s ease; }
+  .projetos .corpo .extra { display: none; }
+  .chat { flex: 1 1 0; min-height: 46px; display: flex; flex-direction: column; }
+  .dir .card.chat { min-height: 46px; }
+  .chat .corpo { flex: 1; min-height: 0; display: flex; flex-direction: column; transition: opacity .35s ease; }
+  .dir .card.recolhido h2 { margin-bottom: 0; }
+  .projetos.recolhido .corpo { max-height: 0; opacity: 0; }
+  .chat.recolhido { flex-grow: 0; } .chat.recolhido .corpo { opacity: 0; pointer-events: none; }
+  .dir.chat-recolhido .projetos { flex-grow: 1; } .dir.chat-recolhido .projetos .corpo { max-height: 560px; overflow-y: auto; scrollbar-width: none; }
+  .dir.chat-recolhido .projetos .corpo .extra { display: flex; }
+  .recolher { background: none; border: 0; padding: 3px; margin-left: 2px; cursor: pointer; color: var(--muted); display: grid; place-items: center; border-radius: 4px; }
+  .recolher:hover { color: var(--blue); background: rgba(169,200,242,.08); }
+  .recolher svg { width: 13px !important; height: 13px !important; stroke: currentColor !important; transition: transform .4s cubic-bezier(.22,1,.36,1); }
+  .recolhido .recolher svg { transform: rotate(-90deg); }
+  .projetos h2 .recolher { margin-left: auto; }
+  .abas { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); background: rgba(255,255,255,.03); border: 1px solid var(--line); border-radius: 7px; padding: 2px; margin-bottom: 8px; }
+  .abas button { position: relative; z-index: 1; font: inherit; font-size: calc(10.5px * var(--fs, 1)); color: var(--muted); background: none; border: 0; padding: 4px 0; cursor: pointer; transition: color .3s; }
+  .abas button.sel { color: var(--blue); }
+  .abas .pil { position: absolute; top: 2px; bottom: 2px; left: 2px; width: calc((100% - 4px) / 3); border-radius: 5px; background: rgba(169,200,242,.12); transition: transform .42s cubic-bezier(.22,1,.36,1); }
+  .trilha { display: flex; align-items: center; gap: 6px; min-height: 18px; margin: 0 0 4px; font-size: calc(10px * var(--fs, 1)); color: var(--muted); }
+  .trilha .voltar { font: inherit; font-size: 14px; line-height: 1; color: var(--muted); background: none; border: 0; padding: 0 4px; cursor: pointer; border-radius: 3px; }
+  .trilha .voltar:hover { color: var(--blue); background: rgba(169,200,242,.08); }
+  .trilha .voltar[hidden] { display: none; }
+  .trilha .onde { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lista { max-height: 150px; overflow-y: auto; scrollbar-width: none; }
+  .lista::-webkit-scrollbar { display: none; }
+  .dir.chat-recolhido .projetos .lista { max-height: 470px; }
+  .lista .pasta { cursor: pointer; padding: 6px 6px; gap: 9px; }
+  .lista .pasta:hover { background: rgba(169,200,242,.05); }
+  .lista .pasta .nome { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lista .pasta .n { font-size: calc(9.5px * var(--fs, 1)); color: var(--muted); }
+  .lista .pasta .marca { font: inherit; font-size: 12px; line-height: 1; color: var(--muted); background: none; border: 0; padding: 2px 3px; cursor: pointer; border-radius: 3px; opacity: .55; }
+  .lista .pasta .marca:hover { opacity: 1; color: #d6bb86; }
+  .lista .pasta .marca.on { color: #d6bb86; opacity: 1; }
+  .lista .pasta .marca.herdada { opacity: .35; cursor: default; }
+  .lista .pasta.bloqueada { opacity: .4; cursor: default; }
+  .lista .pasta .seta { margin-left: 0; padding: 0 3px; border-radius: 3px; }
+  .lista .pasta .seta:hover { color: var(--blue); background: rgba(169,200,242,.1); }
+  .lista .vazio { color: var(--muted); font-size: calc(10.5px * var(--fs, 1)); padding: 8px 6px; }
+  /* chat maximizado: sai da coluna, cresce sobre a área central e deixa o cluster aparecer por trás */
+  .card.chat.solto { position: absolute; z-index: 6; margin: 0;
+    transition: left .5s cubic-bezier(.22,1,.36,1), top .5s cubic-bezier(.22,1,.36,1), width .5s cubic-bezier(.22,1,.36,1),
+                height .5s cubic-bezier(.22,1,.36,1), background-color .5s ease, border-color .5s ease, backdrop-filter .5s ease; }
+  .card.chat.max { background: rgba(9,10,13,.58); border-color: rgba(169,200,242,.28); backdrop-filter: blur(2.5px); -webkit-backdrop-filter: blur(2.5px);
+                   padding: 18px 22px 16px; }
+  .card.chat.max h2 { font-size: calc(15px * var(--fs, 1)); }
+  .card.chat.max .msgs { gap: 16px; padding: 10px 6px 14px 0; }
+  .card.chat.max .msg { font-size: calc(13px * var(--fs, 1)); max-width: 58%; padding: 11px 14px 8px; background: rgba(22,24,29,.82); }
+  .card.chat.max .msg.eu { background: rgba(169,200,242,.16); }
+  .card.chat.max .entrada { padding: 7px 8px 7px 16px; }
+  .card.chat.max .entrada input { font-size: calc(13px * var(--fs, 1)); }
+  #c-tema { font-size: calc(11px * var(--fs, 1)); color: var(--muted); font-weight: 400; display: none; }
+  .card.chat.max #c-tema { display: inline; }
+  .tam { background: none; border: 0; padding: 3px; margin-left: 4px; cursor: pointer; color: var(--muted); display: grid; place-items: center; border-radius: 4px; }
+  .tam:hover { color: var(--blue); background: rgba(169,200,242,.08); }
+  .tam svg { width: 14px !important; height: 14px !important; stroke: currentColor !important; }
+  .msgs { flex: 1; display: flex; flex-direction: column; gap: 12px; padding: 4px 2px 8px 0; overflow-y: auto; scrollbar-width: none; min-height: 0; }
+  .msgs::-webkit-scrollbar { display: none; }
+  .msg { max-width: 72%; padding: 9px 11px 6px; border-radius: 8px; font-size: calc(11px * var(--fs, 1)); line-height: 1.45; background: #16181d; }
+  .msg small { display: block; text-align: right; color: var(--muted); font-size: calc(9px * var(--fs, 1)); margin-top: 4px; }
+  .msg.eu { align-self: flex-end; background: rgba(169,200,242,.14); color: #cfe0f7; }
+  .msg > span { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .msg > span code { font-family: ui-monospace, Menlo, monospace; font-size: .92em; background: rgba(169,200,242,.08); padding: 0 3px; border-radius: 3px; }
+  .msg > span strong { color: #e6ecf6; font-weight: 600; }
+  .msg.digitando > span::after { content: "▍"; color: var(--blue); margin-left: 1px; }
+  .msg .acao { display: block; color: var(--muted); font-size: calc(9.5px * var(--fs, 1)); font-style: italic; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .msg .acao:empty { display: none; }
+  .msg.erro { background: rgba(120,40,40,.35); color: #f1c9c9; }
+  .nova { background: none; border: 0; padding: 3px; margin-left: 4px; cursor: pointer; color: var(--muted); display: grid; place-items: center; border-radius: 4px; }
+  .nova:hover { color: var(--blue); background: rgba(169,200,242,.08); }
+  .nova svg { width: 14px !important; height: 14px !important; stroke: currentColor !important; }
+  .modelo { position: relative; margin-left: auto; }
+  .modelo > button { font: inherit; font-size: calc(10.5px * var(--fs, 1)); color: var(--blue); background: rgba(169,200,242,.08); border: 1px solid rgba(169,200,242,.3);
+                     border-radius: 10px; padding: 3px 8px 3px 9px; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+  .modelo > button:hover { border-color: rgba(169,200,242,.6); }
+  .modelo ul { position: absolute; right: 0; top: calc(100% + 6px); margin: 0; padding: 4px; list-style: none; z-index: 5; min-width: 132px;
+               background: #0d0e11; border: 1px solid var(--line); border-radius: 8px; display: none; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+  .modelo.aberto ul { display: block; }
+  .modelo li { padding: 6px 8px; border-radius: 5px; font-size: calc(11px * var(--fs, 1)); color: var(--text); cursor: pointer; font-weight: 400; display: flex; justify-content: space-between; }
+  .modelo li small { color: var(--muted); font-size: calc(9.5px * var(--fs, 1)); }
+  .modelo li:hover { background: rgba(169,200,242,.1); }
+  .modelo li.sel { color: var(--blue); }
+  .entrada { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 18px; padding: 4px 6px 4px 12px;
+             font-size: calc(11px * var(--fs, 1)); color: #5c6068; }
+  .entrada input { flex: 1; background: none; border: 0; outline: 0; color: var(--text); font: inherit; font-size: calc(11px * var(--fs, 1)); padding: 4px 0; }
+  .entrada input::placeholder { color: #5c6068; }
+  .entrada button { background: none; border: 0; padding: 4px; cursor: pointer; display: grid; place-items: center; }
+  .entrada svg { width: 14px; height: 14px; stroke: var(--blue); fill: none; stroke-width: 1.6; }
+
+  /* centralizadores do arco: brilho estável, sem pulsar; a troca é uma transição curta, como um menu */
+  .hub { position: absolute; width: 64px; height: 64px; margin: -32px 0 0 -32px; border: 0; padding: 0; background: none;
+         cursor: pointer; font: inherit; color: inherit; }
+  .hub .no { position: absolute; left: 50%; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%;
+             background: radial-gradient(circle, #f5efe2 0 25%, #d6bb86 55%, #9c835a 100%);
+             box-shadow: 0 0 8px 2px rgba(214,187,134,.38);
+             transition: transform .38s cubic-bezier(.22,1,.36,1), box-shadow .38s ease, filter .3s ease; filter: brightness(.82); }
+  .hub .anel { position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%;
+               border: 1px solid rgba(214,194,150,.32); transition: transform .42s cubic-bezier(.22,1,.36,1), border-color .3s ease, opacity .3s ease; }
+  .hub { transition: opacity .5s ease; }
+  .hub .rot { position: absolute; left: 50%; top: 100%; transform: translate(-50%, -18px); white-space: nowrap; font-size: calc(13.5px * var(--fs, 1));
+              font-family: Fraunces, Georgia, serif; font-weight: 100; letter-spacing: .01em;
+              color: rgba(220,203,168,.72); transition: color .3s ease, transform .38s cubic-bezier(.22,1,.36,1); }
+  .hub.ativo .no { transform: scale(1.75); filter: brightness(1.15); box-shadow: 0 0 18px 6px rgba(214,187,134,.42); }
+  .hub.ativo .anel { transform: scale(1.6); border-color: rgba(222,204,166,.75); }
+  .hub.ativo .rot { color: #eadbbc; transform: translate(-50%, -12px) scale(1.14); }
+  .hub:focus-visible { outline: 1px dashed rgba(242,182,76,.6); outline-offset: 2px; border-radius: 50%; }
+
+  #legenda { position: absolute; left: 0; right: 0; top: 680px; text-align: center; font-size: calc(12px * var(--fs, 1)); color: #b9c3d3; pointer-events: none;
+             font-family: Fraunces, Georgia, serif; font-weight: 100; font-size: calc(11.5px * var(--fs, 1)); }
+  /* botão de novo centralizador, na próxima vaga do arco */
+  #novo { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; border: 1px dashed rgba(169,200,242,.55);
+          background: rgba(10,10,12,.6); color: var(--blue); font-size: calc(15px * var(--fs, 1)); line-height: 1; cursor: pointer; display: grid; place-items: center;
+          transition: opacity .4s ease, transform .3s cubic-bezier(.22,1,.36,1), border-color .3s ease; padding: 0; }
+  #novo:hover { transform: scale(1.15); border-color: var(--blue); }
+  /* controles da vista: canto inferior esquerdo da área central */
+  #vista { position: absolute; left: 50%; transform: translateX(-50%); top: 724px; display: flex; gap: 10px; align-items: center; font-size: calc(10.5px * var(--fs, 1)); }
+  .modo { position: relative; }
+  .modo .pilula { position: absolute; top: 2px; bottom: 2px; left: 2px; width: 50px; border-radius: 12px; background: rgba(169,200,242,.16);
+                  border: 1px solid rgba(169,200,242,.35); transition: left .42s cubic-bezier(.22,1,.36,1), width .42s cubic-bezier(.22,1,.36,1); pointer-events: none; }
+  .modo button { position: relative; z-index: 1; transition: color .3s ease; }
+  .modo button.sel { background: none !important; }
+  .grupo { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 14px; background: rgba(10,10,12,.85); overflow: hidden; }
+  .grupo button { font: inherit; color: var(--muted); background: none; border: 0; padding: 5px 10px; cursor: pointer; }
+  .grupo button:hover { color: var(--text); }
+  .grupo button.sel { color: var(--blue); background: rgba(169,200,242,.12); }
+  .grupo .zbtn { width: 26px; padding: 5px 0; font-size: calc(13px * var(--fs, 1)); line-height: 1; }
+  #zoomv { min-width: 40px; text-align: center; color: var(--text); font-variant-numeric: tabular-nums; }
+  /* cidade, hora e temperatura, acima do card de Projetos */
+  #clima { position: absolute; left: 1048px; width: 251px; top: 16px; display: flex; align-items: baseline; gap: 10px; pointer-events: none; }
+  #clima { font-family: Fraunces, Georgia, serif; font-weight: 100; font-size: calc(17px * var(--fs, 1)); line-height: 1; top: 21px !important; }
+  #clima .hora { color: var(--blue); font-variant-numeric: tabular-nums; }
+  #clima .cidade { color: #c4cad4; }
+  #clima .temp { margin-left: auto; color: var(--blue); }
+  /* cartão de um arquivo do cluster */
+  #arquivo { position: absolute; width: 248px; padding: 12px 12px 10px; border-radius: 8px; background: rgba(10,10,12,.96); border: 1px solid rgba(169,200,242,.35);
+             box-shadow: 0 10px 30px rgba(0,0,0,.55); font-size: calc(11px * var(--fs, 1)); display: none; z-index: 4; }
+  #arquivo.aberto { display: block; }
+  #arquivo b { display: block; font-weight: 500; font-size: calc(12.5px * var(--fs, 1)); color: var(--blue); margin-bottom: 3px; word-break: break-all; }
+  #arquivo small { color: var(--muted); display: block; margin-bottom: 10px; }
+  #arquivo .acoes { display: flex; gap: 6px; }
+  #arquivo button { font: inherit; font-size: calc(10.5px * var(--fs, 1)); padding: 5px 9px; border-radius: 12px; cursor: pointer; border: 1px solid rgba(169,200,242,.35);
+                    background: rgba(169,200,242,.1); color: var(--blue); }
+  #arquivo button.sec { background: none; color: var(--muted); border-color: var(--line); }
+  #arquivo button:hover { border-color: var(--blue); }
+  canvas#ceu.arquivo-hover { cursor: pointer; }
+  canvas#ceu.arrasta { cursor: grab; } canvas#ceu.arrastando { cursor: grabbing; }
+  #legenda.vazia::before { display: none; }
+  #legenda::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--blue);
+                     margin-right: 8px; vertical-align: 1px; box-shadow: 0 0 6px var(--blue); }
+
+  /* ajustes: escondidos atrás de uma engrenagem discreta (tecla A também abre) */
+  #engrenagem { position: absolute; right: 18px; bottom: 16px; width: 26px; height: 26px; border-radius: 50%;
+                border: 1px solid #2a2c31; background: rgba(10,10,12,.8); color: #6d727b; cursor: pointer; display: grid; place-items: center; }
+  #engrenagem:hover { color: var(--gold); border-color: rgba(242,182,76,.5); }
+  #ajustes { position: absolute; right: 18px; bottom: 50px; width: 250px; padding: 14px; border-radius: 8px;
+             background: rgba(10,10,12,.96); border: 1px solid var(--line); font-size: calc(11px * var(--fs, 1)); display: none; }
+  #ajustes.aberto { display: block; }
+  #ajustes label { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; margin-bottom: 10px; color: var(--muted); }
+  #ajustes label output { color: var(--text); }
+  #ajustes input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--gold); }
+  #ajustes .chk { display: flex; gap: 8px; align-items: center; color: var(--text); grid-template-columns: none; }
+</style>
+</head>
+<body>
+<div id="palco">
+  <canvas id="ceu" width="1344" height="768"></canvas>
+  <h1>Jarvis Astrologicum</h1>
+
+  <div class="coluna esq">
+    <section class="card gmail">
+      <h2><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>Gmail<button class="atualizar" title="Atualizar Gmail e Agenda" aria-label="Atualizar Gmail e Agenda">↻</button></h2>
+      <div id="google-conectar" hidden><button id="bt-google">Conectar Google</button><small>Gmail, Agenda e Drive direto pela API: mais rápido e sem gastar tokens.</small></div>
+      <div id="gmail-lista"><div class="vazio">Carregando…</div></div>
+    </section>
+    <section class="card agenda">
+      <h2><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Agenda<small class="quando-at" id="painel-quando"></small></h2>
+      <div id="agenda-lista"><div class="vazio">Carregando…</div></div>
+    </section>
+    <section class="card tarefas">
+      <h2><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="m8 12 3 3 5-6"/></svg>Tarefas</h2>
+      <div id="tarefas-lista"></div>
+    </section>
+  </div>
+
+  <div class="coluna dir">
+    <section class="card projetos">
+      <h2><svg viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v10H3z"/></svg>Diretórios<button class="recolher" title="Recolher" aria-label="Recolher"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="m6 9 6 6 6-6"/></svg></button></h2>
+      <div class="corpo">
+        <div class="abas" role="tablist"><span class="pil"></span><button data-r="claude" class="sel" role="tab">Claude</button><button data-r="drive" role="tab">Drive</button><button data-r="mac" role="tab">Mac</button></div>
+        <div class="trilha"><button class="voltar" title="Voltar" aria-label="Voltar">‹</button><span class="onde"></span></div>
+        <div class="lista"></div>
+      </div>
+    </section>
+    <section class="card chat">
+      <h2><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>Claude <span id="c-tema"></span>
+        <div class="modelo" id="modelo"><button type="button" title="Modelo"><span id="modelo-nome"></span><svg width="8" height="8" viewBox="0 0 10 10" style="stroke:currentColor;width:8px;height:8px"><path d="m2 3.5 3 3 3-3" fill="none"/></svg></button>
+          <ul id="modelos"></ul></div><button class="nova" id="c-nova" title="Nova conversa" aria-label="Nova conversa"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><path d="M12 5v14M5 12h14"/></svg></button><button class="tam" id="c-tam" title="Maximizar" aria-label="Maximizar"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><path id="c-tam-ic" d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></button><button class="recolher" title="Recolher" aria-label="Recolher"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="m6 9 6 6 6-6"/></svg></button></h2>
+      <div class="corpo">
+      <div class="msgs" id="msgs">
+      </div>
+      <form class="entrada" id="form"><input id="texto" placeholder="Digite sua mensagem…" autocomplete="off"><button type="button" class="mic" id="mic" title="Ditar (fala para texto)" aria-label="Ditar"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button><button title="Enviar"><svg viewBox="0 0 24 24"><path d="m4 12 16-8-6 16-2-7z"/></svg></button></form>
+      </div>
+    </section>
+  </div>
+
+  <div id="clima"><span class="hora" id="c-hora">--:--</span><span class="cidade" id="c-cidade"></span><span class="temp" id="c-temp">— °C</span></div>
+  <div id="arquivo"><b id="a-nome"></b><small id="a-info"></small>
+    <div class="acoes"><button id="a-abrir">Abrir</button><button id="a-claude">Perguntar ao Claude</button><button class="sec" id="a-fechar" title="Fechar">✕</button></div></div>
+  <div id="janela-email" role="dialog" aria-label="E-mail">
+    <div class="je-topo"><span class="av" id="je-av"></span><span class="je-tit"><b id="je-de"></b><small id="je-assunto"></small></span><span class="hora" id="je-quando"></span><button class="je-x" id="je-fechar" title="Fechar (Esc)">✕</button></div>
+    <div class="je-corpo" id="je-corpo"></div>
+    <div class="je-form" id="je-form" hidden>
+      <input id="je-para" placeholder="Para (e-mail)" autocomplete="off" hidden>
+      <textarea id="je-texto" rows="5" placeholder="Escreva aqui…"></textarea>
+      <div class="je-linha"><button class="sec" id="je-cancelar">Cancelar</button><button id="je-enviar">Enviar</button></div>
+    </div>
+    <div class="je-acoes" id="je-acoes">
+      <button id="je-responder">Responder</button><button id="je-encaminhar">Encaminhar</button>
+      <span class="je-arq"><select id="je-label"><option value="">Arquivar em…</option></select><button id="je-arquivar" disabled>Arquivar</button></span>
+      <button id="je-naolido" title="Volta a aparecer como não lido no Gmail">Não lido</button>
+      <button class="perigo" id="je-lixeira">Lixeira</button><button class="sec" id="je-jarvis">Perguntar ao JARVIS</button>
+    </div>
+    <div class="je-status" id="je-status"></div>
+  </div>
+  <div id="hubs"></div>
+  <button id="novo" title="Novo centralizador" aria-label="Novo centralizador">+</button>
+  <div id="legenda">Skills</div>
+  <div id="vista">
+    <div class="grupo modo" role="group" aria-label="Vista do cluster"><span class="pilula" id="pilula"></span>
+      <button id="v-disco" class="sel" title="Disco: o cluster visto de frente">Disco</button>
+      <button id="v-espacial" title="Espacial: arraste para girar e ver o volume">Espacial</button>
+    </div>
+    <div class="grupo" role="group" aria-label="Zoom">
+      <button class="zbtn" id="z-menos" title="Afastar">−</button><span id="zoomv">100%</span><button class="zbtn" id="z-mais" title="Aproximar">+</button>
+      <button class="zbtn" id="z-reset" title="Ajustar à tela" aria-label="Ajustar à tela" style="border-left:1px solid var(--line)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" style="display:block;margin:auto"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    </div>
+  </div>
+
+  <button id="engrenagem" title="Ajustes (A)" aria-label="Ajustes">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>
+  </button>
+  <div id="ajustes">
+    <label>Estrelas <output id="o-n"></output><input id="n" type="range" min="200" max="4000" step="50" value="1500"></label>
+    <label>Velocidade <output id="o-vel"></output><input id="vel" type="range" min="0" max="3" step="0.05" value="1"></label>
+    <label>Variação entre estrelas <output id="o-var"></output><input id="var" type="range" min="0" max="1" step="0.05" value="0.8"></label>
+    <label>Névoa <output id="o-nev"></output><input id="nev" type="range" min="0" max="1" step="0.01" value="0.45"></label>
+    <label>Via Láctea <output id="o-vl"></output><input id="vl" type="range" min="0" max="1" step="0.01" value="0.6"></label>
+    <label>Paralaxe do mouse <output id="o-par"></output><input id="par" type="range" min="0" max="30" step="1" value="10"></label>
+    <label class="chk"><input id="demo" type="checkbox"> Troca automática quando parado</label>
+    <label class="chk"><input id="meteoros" type="checkbox" checked> Meteoros ocasionais</label>
+    <label>Céu (ASC e MC) <output></output>
+      <select id="local" style="grid-column:1/-1;background:#111;color:var(--text);border:1px solid var(--line);border-radius:4px;padding:3px">
+
+      </select></label>
+    <label class="chk"><input id="acelerado" type="checkbox"> Tempo acelerado (1 h por segundo)</label>
+    <label class="chk"><input id="autogiro" type="checkbox"> Giro automático no modo Espacial</label>
+    <label>Tamanho das fontes <output id="o-fs"></output><input id="fs" type="range" min="0.8" max="1.4" step="0.05" value="1"></label>
+    <label>Cintilação <output id="o-cin"></output><input id="cin" type="range" min="0" max="1" step="0.05" value="0.5"></label>
+  </div>
+</div>
+
+<script>/*JARVIS_CONFIG*/
+window.JARVIS = window.JARVIS || { nome: 'você', local: { cidade: 'São Paulo', lat: -23.55, lon: -46.63, fuso: 'America/Sao_Paulo' },
+  modelos: [{ nome: 'Sonnet', id: 'sonnet', nota: 'equilíbrio' }], padrao: 'Sonnet',
+  nichos: [{ id: 'notas', nome: 'Notas', tipo: 'nota' }, { id: 'conversas', nome: 'Conversas', tipo: 'conversa' }, { id: 'skills', nome: 'Skills', tipo: 'skill' }, { id: 'artefatos', nome: 'Artefatos', tipo: 'artefato' }], apps: [] };
+</script>
+<script>
+(() => {
+  const W = 1344, H = 768;
+  const C = { x: 652, y: 336 };          // núcleo dourado
+  const RING = { rx: 296, ry: 272 };     // anel externo, onde ficam os centralizadores
+  const RMAX = 262;                      // raio máximo do cluster
+  const F = 1150;                        // distância focal da perspectiva
+
+  const palco = document.getElementById('palco');
+  const cv = document.getElementById('ceu');
+  const ctx = cv.getContext('2d');
+  // o céu é desenhado na resolução real da tela (pixels do monitor × escala do palco), senão a
+  // ampliação do palco borra as estrelas
+  let DPR = 1;
+
+  let escala = 1;
+  function caber() {
+    escala = Math.min(innerWidth / W, innerHeight / H);
+    palco.style.transform = `translate(${-W * escala / 2}px, ${-H * escala / 2}px) scale(${escala})`;
+    const R = Math.max(1, Math.min(3, (window.devicePixelRatio || 1) * escala));
+    if (Math.abs(R - DPR) > 0.01 || cv.width !== Math.round(W * R)) { DPR = R; cv.width = Math.round(W * R); cv.height = Math.round(H * R); ctx.setTransform(DPR, 0, 0, DPR, 0, 0); }
+  }
+  addEventListener('resize', caber); caber();
+  // coordenadas do palco a partir do mouse
+  const noPalco = e => { const r = palco.getBoundingClientRect(); return { x: (e.clientX - r.left) / escala, y: (e.clientY - r.top) / escala }; };
+
+  // ---------- ajustes ----------
+  const aj = {};
+  for (const id of ['n', 'vel', 'var', 'nev', 'vl', 'par', 'cin', 'fs']) {
+    const el = document.getElementById(id), out = document.getElementById('o-' + id);
+    const ler = () => { aj[id] = +el.value; out.textContent = ['nev', 'var', 'vl', 'cin', 'fs'].includes(id) ? Math.round(el.value * 100) + '%' : el.value + (id === 'vel' ? '×' : id === 'par' ? ' px' : ''); };
+    el.addEventListener('input', () => { ler(); if (id === 'n') semear(); if (id === 'fs') document.documentElement.style.setProperty('--fs', el.value); });
+    ler();
+  }
+  const demoEl = document.getElementById('demo');
+  const meteorosEl = document.getElementById('meteoros');
+  const autogiroEl = document.getElementById('autogiro');
+  const painel = document.getElementById('ajustes');
+  document.getElementById('engrenagem').onclick = () => painel.classList.toggle('aberto');
+  addEventListener('keydown', e => { if (e.key === 'a' || e.key === 'A') painel.classList.toggle('aberto'); });
+
+  // ---------- sprites de brilho ----------
+  function sprite(cor) {
+    const s = document.createElement('canvas'); s.width = s.height = 64;
+    const g = s.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    // núcleo firme e um halo que cai mais rápido: a estrela fica nítida, ainda com um brilho em volta
+    gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.09, 'rgba(255,255,255,.97)'); gr.addColorStop(0.14, cor(0.85)); gr.addColorStop(0.22, cor(0.22));
+    gr.addColorStop(0.36, cor(0.05)); gr.addColorStop(0.6, cor(0.01)); gr.addColorStop(1, cor(0));
+    g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return s;
+  }
+  const SP = {
+    ouro: sprite(a => `rgba(246,182,72,${a})`),
+    branco: sprite(a => `rgba(235,232,222,${a})`),
+    azul: sprite(a => `rgba(160,198,245,${a})`),
+    ciano: sprite(a => `rgba(150,224,240,${a})`),
+    anil: sprite(a => `rgba(110,150,236,${a})`),
+  };
+  const COR_PONTO = { ouro: '#f3b85a', azul: '#a9c8f2', branco: '#ece7da', ciano: '#9fe2ef', anil: '#86a3ee' };
+
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const gauss = () => { let u = 0; for (let i = 0; i < 4; i++) u += Math.random(); return (u - 2) / 1.15; };
+  const easeOut = p => 1 - Math.pow(1 - p, 3);
+  const suave = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+
+  // ---------- câmera: modo Disco (de frente, achatado) ou Espacial (com volume, gira no arrasto) ----------
+  const cam = { modo: 'disco', esp: 0, pitch: 0, yaw: 0, alvoPitch: 0, alvoYaw: 0, vPitch: 0, vYaw: 0, zoom: 1, alvoZoom: 1, px: 0, py: 0, alvoPx: 0, alvoPy: 0 };
+  let cp, sp, cy_, sy_;       // senos e cossenos do quadro
+  // disco: (x, y) no plano, h na normal. Rotação: pitch em torno do eixo horizontal, depois yaw em torno do vertical.
+  function proj(x, y, h, par) {
+    const y1 = y * cp - h * sp, h1 = y * sp + h * cp;
+    const x2 = x * cy_ + h1 * sy_, h2 = -x * sy_ + h1 * cy_;
+    const k = F / (F - h2 * cam.zoom) * cam.zoom;
+    return { X: C.x + cam.px + x2 * k - pmx * par, Y: C.y + cam.py + y1 * k - pmy * par, k, d: h2 };
+  }
+
+  // ---------- grupos de dados: cada centralizador tem as suas estrelas ----------
+  // as estrelas de conhecimento vêm do indexador (/api/estrelas); cada centralizador junta um tipo
+  // nichos (com 'nicho'): separam um tipo de arquivo por padrão no nome ou na pasta e saem do grupo geral
+  // o menu inferior vem do setup (jarvis.config.json → nichos). Cada botão junta um tipo ("nota", "skill",
+  // "conversa", "artefato" ou "*") e, se tiver "padrao", só o que casar com ele (um nicho). "app" liga um atalho.
+  const GRUPOS = JARVIS.nichos.map(n => ({ id: n.id, nome: n.nome + (n.app ? ' ↗' : ''), tipo: n.tipo || '*', app: n.app,
+    nicho: n.padrao ? new RegExp(n.padrao, 'i') : null, itens: [] }));
+  // grupos criados pelo "+": juntam as estrelas cujo nome ou caminho tem uma palavra
+  const GRUPOS_EU = (() => { try { return JSON.parse(localStorage.getItem('jarvis.grupos') || '[]'); } catch { return []; } })();
+  for (const g of GRUPOS_EU) GRUPOS.push({ ...g, itens: [] });
+  // espaço entre centralizadores no arco (rad): aperta quando há muitos, para não passar das laterais
+  const espHub = n => Math.min(0.385, 2.7 / Math.max(1, n - 1));
+  const angHub = (i, n) => Math.PI / 2 + ((n - 1) / 2 - i) * espHub(n);
+  const posAng = th => [C.x + Math.cos(th) * RING.rx, C.y + Math.sin(th) * RING.ry];
+
+  // velocidade angular própria de cada estrela: base kepleriana × um fator aleatório
+  const omega = (r, sorte) => 0.05 * Math.pow(70 / (r + 30), 0.9) * sorte;
+  const novaSorte = () => Math.exp(rnd(Math.log(0.12), Math.log(3.8)));
+  // altura em relação ao disco: bojo grosso no centro, disco fino nas bordas, e um halo raro bem fora do plano
+  const altura = r => Math.random() < 0.06 ? gauss() * 110 : gauss() * (5 + 62 * Math.exp(-r / 75));
+  const cintila = () => Math.random() < 0.35 ? { tf: 0, ta: 0 } : { tf: rnd(0.6, 3.2), ta: rnd(0.15, 0.6), tp: rnd(0, 6.28) };
+
+  let estrelas = [], dados = [], fundo = [], turbilhao = [], meteoros = [], supernovas = [];
+  function semear() {
+    estrelas = [];
+    const n = aj.n || 1500;
+    for (let i = 0; i < n; i++) {
+      const r = 18 + RMAX * Math.pow(Math.random(), 0.75);
+      const z = Math.random();
+      const u = Math.random();
+      const [tamM, briM] = u < 0.24 ? [rnd(0.3, 0.6), rnd(0.08, 0.2)] : u < 0.84 ? [rnd(0.6, 1.5), rnd(0.25, 0.55)]
+                         : u < 0.985 ? [rnd(1.5, 2.9), rnd(0.5, 0.85)] : [rnd(3, 4.4), rnd(0.85, 1)];
+      const t = Math.random();
+      const sorte = r > 165 && Math.random() < 0.13 ? rnd(4, 8) : novaSorte();
+      estrelas.push({ r, a: rnd(0, Math.PI * 2), h: altura(r), sorte, z, tam: tamM + z * 0.25, brilho: Math.min(1, briM + z * 0.06) * 0.85,
+        cor: t < 0.3 ? 'ouro' : t < 0.62 ? 'ciano' : t < 0.78 ? 'branco' : t < 0.92 ? 'azul' : 'anil', wob: rnd(0, 6.28), wobA: rnd(0, 3), ...cintila() });
+    }
+    supernovas = [];
+    for (let i = 0; i < 2; i++) supernovas.push({ r: rnd(90, 250), a: rnd(0, 6.28), h: gauss() * 20, sorte: novaSorte(), tam: rnd(10, 15), cor: i % 2 ? 'branco' : 'azul' });
+    turbilhao = [];
+    for (let i = 0; i < Math.round(n * 0.14); i++) {
+      const r = 16 + 70 * Math.pow(Math.random(), 1.4);
+      turbilhao.push({ r, a: rnd(0, 6.28), h: gauss() * 6, w: rnd(0.35, 1.7) * Math.pow(40 / (r + 10), 0.7), tam: rnd(0.4, 1.6),
+                       brilho: rnd(0.25, 0.85), cor: (u => u < 0.4 ? 'ouro' : u < 0.78 ? 'ciano' : 'branco')(Math.random()), ry: rnd(0.55, 0.95) });
+    }
+  }
+  // uma estrela de conhecimento: as mais recentes ficam mais perto do núcleo (a idade vira distância)
+  function novaEstrelaDados(g, it, k, n, nascendo) {
+    const r = 58 + (RMAX - 70) * Math.pow((k + rnd(0.1, 0.9)) / Math.max(n, 1), 0.85), a = rnd(0, Math.PI * 2);
+    let rot = it.tipo === 'artefato' ? it.titulo.replace(/\.[a-z0-9]{2,4}$/i, '').replace(/[_-]\d{4}[_-]\d{2}[_-]\d{2}$/, '').replace(/[_]+|(?<=\w)-(?=\w)/g, ' ')
+      .replace(/Revolu[cç][aã]o solar/i, 'RS').replace(/Dossie natal/i, 'Dossiê natal').replace(/Horaria/i, 'Horária') : it.titulo;
+    if (rot.length > 40) rot = rot.slice(0, 38) + '…';
+    const d = { grupo: g.id, item: it, id: it.id, rot, r, a, h: gauss() * (6 + 40 * Math.exp(-r / 90)), sorte: novaSorte(), z: rnd(0.6, 1),
+                ligado: g.id === ativo ? 1 : 0, nasce: nascendo ? -Math.min(k, 40) * 0.03 : 1, x: 0, y: 0 };
+    dados.push(d); return d;
+  }
+  function semearFundo() {
+    fundo = [];
+    for (let i = 0; i < 520; i++) {
+      const m = Math.pow(Math.random(), 4);
+      fundo.push({ x: rnd(0, W), y: rnd(0, H), tam: 0.4 + m * 2.2, brilho: 0.18 + m * 0.7, z: Math.random() * 0.4, cor: (u => u < 0.45 ? 'ouro' : u < 0.72 ? 'branco' : u < 0.9 ? 'ciano' : 'azul')(Math.random()), ...cintila() });
+    }
+  }
+  semear(); semearFundo();
+
+  // ---------- Via Láctea ----------
+  const via = document.createElement('canvas'); via.width = W; via.height = H;
+  (() => {
+    const g = via.getContext('2d');
+    const A = { x: -120, y: 700 }, B = { x: 1460, y: 40 };
+    const L = Math.hypot(B.x - A.x, B.y - A.y), ux = (B.x - A.x) / L, uy = (B.y - A.y) / L, nx = -uy, ny = ux;
+    const gs = () => { let u = 0; for (let i = 0; i < 4; i++) u += Math.random(); return (u - 2) / 2; };
+    for (let i = 0; i < 260; i++) {
+      const t = Math.random() * L, off = gs() * 120, x = A.x + ux * t + nx * off, y = A.y + uy * t + ny * off;
+      const sz = rnd(40, 140), quente = Math.random() < 0.3;
+      const gr = g.createRadialGradient(x, y, 0, x, y, sz);
+      const a = rnd(0.02, 0.06) * (1 - Math.min(1, Math.abs(off) / 220));
+      gr.addColorStop(0, quente ? `rgba(190,160,125,${a})` : `rgba(130,145,170,${a})`); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = gr; g.fillRect(x - sz, y - sz, sz * 2, sz * 2);
+    }
+    g.globalCompositeOperation = 'destination-out';
+    for (let i = 0; i < 90; i++) {
+      const t = Math.random() * L, off = gs() * 40 + 10, x = A.x + ux * t + nx * off, y = A.y + uy * t + ny * off;
+      const sz = rnd(20, 70), gr = g.createRadialGradient(x, y, 0, x, y, sz);
+      gr.addColorStop(0, `rgba(0,0,0,${rnd(0.15, 0.4)})`); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = gr; g.fillRect(x - sz, y - sz, sz * 2, sz * 2);
+    }
+    g.globalCompositeOperation = 'source-over';
+    for (let i = 0; i < 5200; i++) {
+      const t = Math.random() * L, off = gs() * 95, x = A.x + ux * t + nx * off, y = A.y + uy * t + ny * off;
+      g.globalAlpha = rnd(0.12, 0.6) * (1 - Math.min(1, Math.abs(off) / 200));
+      g.fillStyle = Math.random() < 0.7 ? '#d9dbe2' : '#e9c98f';
+      const z = Math.random() < 0.97 ? 0.7 : 1.4; g.fillRect(x, y, z, z);
+    }
+    g.globalAlpha = 1;
+  })();
+
+  // ---------- névoa cinza ----------
+  const nevoa = document.createElement('canvas'); nevoa.width = nevoa.height = 720;
+  (() => {
+    const g = nevoa.getContext('2d'), c = 360;
+    const base = g.createRadialGradient(c, c, 0, c, c, 330);
+    base.addColorStop(0, 'rgba(150,158,170,.55)'); base.addColorStop(0.35, 'rgba(110,118,132,.28)');
+    base.addColorStop(0.75, 'rgba(80,86,98,.08)'); base.addColorStop(1, 'rgba(60,64,72,0)');
+    g.fillStyle = base; g.fillRect(0, 0, 720, 720);
+    for (let i = 0; i < 70; i++) {
+      const a = rnd(0, 6.28), r = Math.pow(Math.random(), 0.8) * 280, x = c + Math.cos(a) * r, y = c + Math.sin(a) * r;
+      const s = rnd(30, 110), gr = g.createRadialGradient(x, y, 0, x, y, s);
+      gr.addColorStop(0, `rgba(140,148,162,${rnd(.03, .09) * (1 - r / 330)})`); gr.addColorStop(1, 'rgba(140,148,162,0)');
+      g.fillStyle = gr; g.fillRect(x - s, y - s, s * 2, s * 2);
+    }
+  })();
+
+  // ---------- órbitas douradas internas (giram com o cluster; as "inclinadas" ganham volume no modo Espacial) ----------
+  const ORBITAS = [
+    { rx: 238, ry: 232, dx: 0, dy: -2, rot: 0, gira: 0, a: .16, w: .8, tracejado: true },
+    { rx: 214, ry: 150, dx: -40, dy: 12, rot: -0.38, gira: 0.006, a: .38, w: .9, inc: 0.35 },
+    { rx: 190, ry: 118, dx: 30, dy: 40, rot: 0.22, gira: -0.004, a: .32, w: .8, inc: -0.3 },
+    { rx: 160, ry: 156, dx: 0, dy: 0, rot: 0, gira: 0, a: .14, w: .7, tracejado: true },
+    { rx: 112, ry: 108, dx: 0, dy: 0, rot: 0, gira: 0, a: .12, w: .7 },
+    { rx: 72, ry: 70, dx: 0, dy: 0, rot: 0, gira: 0, a: .12, w: .7 },
+    { rx: 248, ry: 120, dx: 6, dy: -10, rot: 0.9, gira: 0.012, a: .07, w: .7, prec: 0.05, inc: 0.6 },
+    { rx: 200, ry: 70, dx: -12, dy: 6, rot: -0.6, gira: -0.018, a: .06, w: .6, prec: 0.07, tracejado: true, inc: -0.8 },
+    { rx: 150, ry: 96, dx: 18, dy: -4, rot: 1.8, gira: 0.025, a: .08, w: .6, prec: 0.04, inc: 0.9 },
+    { rx: 230, ry: 190, dx: -8, dy: 8, rot: 0.3, gira: -0.008, a: .05, w: .6, prec: 0.03, tracejado: true, inc: -0.4 },
+    { rx: 96, ry: 44, dx: 0, dy: 0, rot: -1.1, gira: 0.04, a: .07, w: .5, prec: 0.09, inc: 1.1 },
+  ];
+
+  for (const o of ORBITAS) {
+    if (!o.gira) o.gira = (Math.random() < 0.5 ? -1 : 1) * rnd(0.008, 0.02);
+    o.f = rnd(0.02, 0.06); o.ph = rnd(0, 6.28); o.passeio = rnd(4, 10);
+  }
+
+  // ---------- centralizadores (DOM), seleção e nascimento de um novo ----------
+  const hubsEl = document.getElementById('hubs');
+  const legenda = document.getElementById('legenda');
+  const novoEl = document.getElementById('novo');
+  let ativo = null;                 // começa sem nada selecionado no menu
+  function criarHub(g, nascendo) {
+    const b = document.createElement('button');
+    b.className = 'hub' + (g.id === ativo ? ' ativo' : '');
+    b.innerHTML = `<span class="anel"></span><span class="no"></span><span class="rot">${g.nome}</span>`;
+    b.title = g.nome;
+    b.addEventListener('mouseenter', () => { mexeu(); selecionar(g.id); });
+    b.addEventListener('focus', () => selecionar(g.id));
+    b.addEventListener('click', () => { selecionar(g.id); if (g.app) abrirApp(g.app); });
+    g.el = b; g.vis = nascendo ? 0 : 1; g.alvoVis = 1;
+    const n = GRUPOS.length, i = GRUPOS.indexOf(g);
+    g.cur = nascendo ? posAng(angHub(n - 2, n - 1) - espHub(n)) : posAng(angHub(i, n));
+    hubsEl.appendChild(b);
+  }
+  GRUPOS.forEach(g => criarHub(g, false));
+  function selecionar(id) {
+    if (id && dirs.sel) destacarPasta(null);
+    if (id === ativo) return;
+    ativo = id;
+    for (const g of GRUPOS) g.el.classList.toggle('ativo', g.id === id);
+    legenda.textContent = id ? GRUPOS.find(g => g.id === id).nome : '';
+    legenda.classList.toggle('vazia', !id);
+  }
+  legenda.textContent = ''; legenda.classList.add('vazia');
+  for (const d of dados) d.ligado = d.grupo === ativo ? 1 : 0;
+  // ---------- estrelas reais: o índice do servidor vira estrelas; o que some do índice sai do cluster ----------
+  let INDICE = [];
+  const NICHOS = () => GRUPOS.filter(g => g.nicho);
+  const doGrupo = g => g.palavra
+    ? INDICE.filter(e => (e.titulo + ' ' + e.curto).toLowerCase().includes(g.palavra.toLowerCase()))
+    : g.nicho ? INDICE.filter(e => (g.tipo === '*' || e.tipo === g.tipo) && g.nicho.test(e.titulo + ' ' + e.curto)
+                && !NICHOS().slice(0, NICHOS().indexOf(g)).some(n => (n.tipo === '*' || n.tipo === e.tipo) && n.nicho.test(e.titulo + ' ' + e.curto)))
+    : INDICE.filter(e => e.tipo === g.tipo && !NICHOS().some(n => (n.tipo === '*' || n.tipo === e.tipo) && n.nicho.test(e.titulo + ' ' + e.curto)));
+  function sincronizar(nascendo) {
+    for (const g of GRUPOS) {
+      const lista = doGrupo(g), ids = new Set(lista.map(e => e.id));
+      dados = dados.filter(d => d.grupo !== g.id || ids.has(d.id));
+      const tem = new Set(dados.filter(d => d.grupo === g.id).map(d => d.id));
+      lista.forEach((it, k) => { if (!tem.has(it.id)) novaEstrelaDados(g, it, k, lista.length, nascendo); });
+      for (const d of dados) if (d.grupo === g.id) { const it = lista.find(e => e.id === d.id); if (it) d.item = it; }
+      g.itens = lista; g.el.title = `${g.nome} · ${lista.length}`;
+    }
+  }
+  async function carregarEstrelas(forcar) {
+    try {
+      const r = await fetch('/api/estrelas' + (forcar ? '?novo=1' : '')); if (!r.ok) return;
+      INDICE = (await r.json()).estrelas.filter(e => !e.sistema); sincronizar(true); return true;   // arquivos de sistema ficam só no grafo
+    } catch { /* sem servidor: o cluster fica só com as estrelas decorativas */ }
+  }
+  // ---------- conceitos do grafo (graphify): estrelas pequenas que orbitam junto do arquivo de onde vieram ----------
+  let conceitos = [], ligacoesC = [], porIdC = {};
+  const COR_COM = ['ciano', 'azul', 'branco', 'anil', 'ciano', 'azul'];
+  async function carregarGrafo() {
+    try {
+      const r = await fetch('/api/grafo'); if (!r.ok) return; const g = await r.json(); if (!g.pronto) return;
+      const antigos = porIdC; porIdC = {};
+      conceitos = g.conceitos.map(c => {
+        const velho = antigos[c.id]; if (velho && velho.rot === c.rot) { Object.assign(velho, c); porIdC[c.id] = velho; return velho; }
+        // cada comunidade do grafo é uma região (um setor do disco, pelo ângulo de ouro); dentro dela, espalhados
+        const setor = ((c.com ?? 0) * 2.39996) % (Math.PI * 2);
+        const n = { ...c, r: 55 + (RMAX - 65) * Math.pow(Math.random(), 0.7), a: setor + gauss() * 0.32,
+                    h: gauss() * 18, sorte: 0.6 + Math.random() * 0.25, z: rnd(0.5, 1), aceso: 0, tocado: 0, x: 0, y: 0,
+                    tam: 0.7 + Math.min(1.4, Math.sqrt(c.grau || 0) * 0.28), cor: COR_COM[(c.com ?? 0) % COR_COM.length] };
+        porIdC[c.id] = n; return n;
+      });
+      ligacoesC = g.ligacoes;
+    } catch {}
+  }
+  carregarEstrelas().then(carregarGrafo);
+  setInterval(carregarGrafo, 300000);
+  addEventListener('focus', () => carregarEstrelas());           // ao voltar para a janela, pega o que mudou
+  setInterval(() => carregarEstrelas(), 120000);
+  // "+": um grupo seu, por palavra (ex.: "saturno", "horária", "cliente")
+  novoEl.addEventListener('click', () => {
+    const palavra = (prompt('Novo centralizador: reunir as estrelas que tenham esta palavra no nome ou no caminho') || '').trim();
+    if (!palavra) return;
+    const g = { id: 'eu-' + palavra.toLowerCase().replace(/[^a-z0-9à-ú]+/g, '-'), nome: palavra[0].toUpperCase() + palavra.slice(1), palavra, itens: [] };
+    if (GRUPOS.some(x => x.id === g.id)) return selecionar(g.id);
+    GRUPOS.push(g); GRUPOS_EU.push({ id: g.id, nome: g.nome, palavra });
+    try { localStorage.setItem('jarvis.grupos', JSON.stringify(GRUPOS_EU)); } catch {}
+    criarHub(g, true); sincronizar(true); mexeu();
+    setTimeout(() => selecionar(g.id), 380);           // depois que ele aparece, vira o selecionado e liga as suas estrelas
+  });
+
+  let ultimoMovimento = performance.now(), proximaTroca = performance.now() + 3200;
+  function mexeu() { ultimoMovimento = performance.now(); proximaTroca = ultimoMovimento + 5000; }
+
+  // ---------- mouse: paralaxe, arrasto (girar no Espacial, mover com zoom) e roda/pinça (zoom) ----------
+  let mx = 0, my = 0, pmx = 0, pmy = 0, arrasto = null, mouse = { x: -999, y: -999 }, sobre = null, aberto = null, sobreC = null;
+  addEventListener('mousemove', e => { mx = (e.clientX / innerWidth - 0.5) * 2; my = (e.clientY / innerHeight - 0.5) * 2; mouse = noPalco(e); });
+  const naArea = p => p.x > 285 && p.x < 1040 && p.y > 40 && p.y < 690;
+  let clique = null;      // para saber se foi um clique simples (sem arrastar) num espaço vazio
+  cv.addEventListener('pointerdown', e => {
+    const p = noPalco(e); clique = { x: p.x, y: p.y, vazio: !sobre };
+    if (!naArea(p)) return;
+    if (sobre) { abrirArquivo(sobre); return; }       // clique num arquivo: abre o cartão em vez de arrastar
+    if (sobreC) { texto.value = `Sobre o conceito "${sobreC.rot}": `; if (chatCard.classList.contains('recolhido')) recolher('chat'); texto.focus(); return; }
+    fecharArquivo();
+    arrasto = { x: p.x, y: p.y, girar: cam.modo === 'espacial' && !e.shiftKey, t: performance.now() };
+    cv.setPointerCapture(e.pointerId); cv.classList.add('arrastando'); mexeu();
+  });
+  cv.addEventListener('pointermove', e => {
+    const p = noPalco(e);
+    cv.classList.toggle('arrasta', naArea(p) && (cam.modo === 'espacial' || cam.zoom > 1.02));
+    if (!arrasto) return;
+    const dx = p.x - arrasto.x, dy = p.y - arrasto.y, agora = performance.now(), dtm = Math.max(1, agora - arrasto.t);
+    arrasto.x = p.x; arrasto.y = p.y; arrasto.t = agora;
+    if (arrasto.girar) {
+      cam.alvoYaw += dx * 0.0065; cam.alvoPitch = Math.max(-1.45, Math.min(1.45, cam.alvoPitch + dy * 0.0065));
+      cam.vYaw = dx * 0.0065 / dtm * 1000; cam.vPitch = dy * 0.0065 / dtm * 1000;
+    } else { cam.alvoPx += dx; cam.alvoPy += dy; }
+  });
+  const soltar = e => {
+    // clique num espaço vazio (fora de uma estrela e sem arrastar) desmarca o centralizador selecionado
+    if (clique && clique.vazio && e && e.type === 'pointerup') { const p = noPalco(e); if (Math.hypot(p.x - clique.x, p.y - clique.y) < 5) { selecionar(null); destacarPasta(null); } }
+    clique = null;
+    if (!arrasto) return; arrasto = null; cv.classList.remove('arrastando');
+  };
+  cv.addEventListener('pointerup', soltar); cv.addEventListener('pointercancel', soltar);
+  cv.addEventListener('dblclick', () => resetarVista());
+  // roda do mouse e pinça do trackpad (que chega como roda com ctrl): zoom em direção ao cursor
+  palco.addEventListener('wheel', e => {
+    const p = noPalco(e); if (!naArea(p)) return;
+    e.preventDefault();
+    zoomPara(cam.alvoZoom * Math.exp(-e.deltaY * (e.ctrlKey ? 0.012 : 0.0016)), p);
+  }, { passive: false });
+  function zoomPara(z, foco) {
+    z = Math.max(1, Math.min(10, z));
+    const fx = (foco ? foco.x : C.x) - C.x, fy = (foco ? foco.y : C.y) - C.y;
+    // mantém o ponto sob o cursor no lugar
+    cam.alvoPx = fx - (fx - cam.alvoPx) * (z / cam.alvoZoom); cam.alvoPy = fy - (fy - cam.alvoPy) * (z / cam.alvoZoom);
+    if (z <= 1.001) { cam.alvoPx = 0; cam.alvoPy = 0; }
+    cam.alvoZoom = z; mexeu();
+  }
+  document.getElementById('z-mais').onclick = () => zoomPara(cam.alvoZoom * 1.5);
+  document.getElementById('z-menos').onclick = () => zoomPara(cam.alvoZoom / 1.5);
+  document.getElementById('z-reset').onclick = () => resetarVista();
+  function resetarVista() {
+    cam.alvoZoom = 1; cam.alvoPx = 0; cam.alvoPy = 0; cam.vYaw = cam.vPitch = 0;
+    if (cam.modo === 'espacial') { cam.alvoPitch = 1.0; cam.alvoYaw = 0.35; } else { cam.alvoPitch = 0; cam.alvoYaw = 0; }
+  }
+  const bDisco = document.getElementById('v-disco'), bEsp = document.getElementById('v-espacial');
+  function modo(m) {
+    cam.modo = m; bDisco.classList.toggle('sel', m === 'disco'); bEsp.classList.toggle('sel', m === 'espacial'); moverPilula();
+    cam.vYaw = cam.vPitch = 0;
+    if (m === 'espacial') { cam.alvoPitch = 1.0; cam.alvoYaw = 0.35; }   // entra numa vista de três quartos, que já mostra o volume
+    else { cam.alvoPitch = 0; cam.alvoYaw = Math.round(cam.alvoYaw / (2 * Math.PI)) * 2 * Math.PI; }
+    mexeu();
+  }
+  bDisco.onclick = () => modo('disco'); bEsp.onclick = () => modo('espacial');
+  const pilula = document.getElementById('pilula');
+  function moverPilula() { const b = cam.modo === 'espacial' ? bEsp : bDisco; pilula.style.left = b.offsetLeft + 2 + 'px'; pilula.style.width = b.offsetWidth - 4 + 'px'; }
+  document.fonts.ready.then(moverPilula); moverPilula();
+  modo('espacial');      // abre no modo Espacial: o cluster sai do disco e se inclina na vista de três quartos
+  const zoomv = document.getElementById('zoomv');
+
+  // ---------- quadro a quadro ----------
+  let t0 = performance.now(), tempo = 0, giroNevoa = 0, proximoMeteoro = performance.now() + 4000;
+  function quadro(agora) {
+    const dt = Math.min(0.05, (agora - t0) / 1000); t0 = agora; tempo += dt;
+    const vel = aj.vel, vari = aj.var;
+    if (!sobre && !aberto) { pmx += (mx - pmx) * 0.06; pmy += (my - pmy) * 0.06; }   // com uma estrela em foco, a paralaxe congela para ela não fugir do mouse
+    const par = arrasto ? 0 : aj.par * (cam.esp > 0.5 ? 0.4 : 1);
+
+    // câmera: inércia depois do arrasto, giro automático opcional, e tudo amortecido
+    if (!arrasto && cam.modo === 'espacial') {
+      cam.alvoYaw += cam.vYaw * dt; cam.alvoPitch = Math.max(-1.45, Math.min(1.45, cam.alvoPitch + cam.vPitch * dt));
+      cam.vYaw *= Math.pow(0.04, dt); cam.vPitch *= Math.pow(0.04, dt);
+      if (autogiroEl.checked && agora - ultimoMovimento > 2500) cam.alvoYaw += 0.12 * dt;
+    }
+    const am = 1 - Math.pow(0.0015, dt);
+    cam.esp += ((cam.modo === 'espacial' ? 1 : 0) - cam.esp) * (1 - Math.pow(0.05, dt));
+    cam.pitch += (cam.alvoPitch - cam.pitch) * am; cam.yaw += (cam.alvoYaw - cam.yaw) * am;
+    cam.zoom += (cam.alvoZoom - cam.zoom) * am; cam.px += (cam.alvoPx - cam.px) * am; cam.py += (cam.alvoPy - cam.py) * am;
+    cp = Math.cos(cam.pitch); sp = Math.sin(cam.pitch); cy_ = Math.cos(cam.yaw); sy_ = Math.sin(cam.yaw);
+    zoomv.textContent = Math.round(cam.alvoZoom * 100) + '%';
+    const esp = cam.esp, zoom = cam.zoom;
+
+    // centralizadores: posições no arco (deslizam quando nasce um novo)
+    const n = GRUPOS.length;
+    GRUPOS.forEach((g, i) => {
+      const [tx, ty] = posAng(angHub(i, n));
+      g.cur[0] += (tx - g.cur[0]) * (1 - Math.pow(0.004, dt)); g.cur[1] += (ty - g.cur[1]) * (1 - Math.pow(0.004, dt));
+      g.vis += (g.alvoVis - g.vis) * (1 - Math.pow(0.01, dt));
+      g.el.style.left = g.cur[0] + 'px'; g.el.style.top = g.cur[1] + 'px';
+      g.el.style.transform = `scale(${0.3 + 0.7 * easeOut(g.vis)})`; g.el.style.opacity = g.vis;
+    });
+    const [nx, ny] = posAng(angHub(n, n + 1) - 0.05);
+    novoEl.style.left = (nx + 34) + 'px'; novoEl.style.top = (ny - 10) + 'px';
+    novoEl.style.opacity = 1; novoEl.style.pointerEvents = 'auto';
+
+    const ORDEM = GRUPOS.map(g => g.id);
+    if (demoEl.checked && !aberto && !sobre && agora > proximaTroca && agora - ultimoMovimento > 4000) {
+      selecionar(ORDEM[(ORDEM.indexOf(ativo) + 1) % ORDEM.length]);
+      proximaTroca = agora + 3400;
+    }
+
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.fillStyle = '#030304'; ctx.fillRect(0, 0, W, H);
+
+    // Via Láctea e meteoros (fundo; não giram com o cluster)
+    if (aj.vl > 0) { ctx.globalAlpha = aj.vl; ctx.drawImage(via, -pmx * aj.par * 0.08, -pmy * aj.par * 0.08); ctx.globalAlpha = 1; }
+    if (meteorosEl.checked && agora > proximoMeteoro) {
+      const x = rnd(120, W - 120), y = rnd(20, H * 0.55), ang = rnd(2.2, 2.8) * (Math.random() < 0.5 ? 1 : -1) + (Math.random() < 0.5 ? 0 : Math.PI);
+      meteoros.push({ x, y, dx: Math.cos(ang), dy: Math.abs(Math.sin(ang)), v: rnd(520, 820), vida: 0, dur: rnd(0.55, 0.95), len: rnd(70, 140) });
+      proximoMeteoro = agora + rnd(5000, 14000);
+    }
+    for (const m of meteoros) {
+      m.vida += dt; const p = m.vida / m.dur; if (p >= 1) continue;
+      const a = Math.sin(Math.PI * p) * 0.4, hx = m.x + m.dx * m.v * m.vida, hy = m.y + m.dy * m.v * m.vida;
+      const g0 = ctx.createLinearGradient(hx, hy, hx - m.dx * m.len, hy - m.dy * m.len);
+      g0.addColorStop(0, `rgba(255,246,225,${a})`); g0.addColorStop(1, 'rgba(255,246,225,0)');
+      ctx.strokeStyle = g0; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx - m.dx * m.len, hy - m.dy * m.len); ctx.stroke();
+    }
+    meteoros = meteoros.filter(m => m.vida < m.dur);
+    for (const s of fundo) desenharEstrela(s.x - pmx * aj.par * s.z * 0.5, s.y - pmy * aj.par * s.z * 0.5, s.tam, brilhoCint(s), s.cor);
+
+    // tudo o que é do cluster fica dentro do anel, como uma janela: o zoom mergulha nele
+    ctx.save();     // (sem recorte: o cluster pode passar do anel)
+
+    // névoa no plano do disco (achata quando o disco se inclina)
+    giroNevoa += dt * 0.012 * vel;
+    if (aj.nev > 0) {
+      const o = proj(0, 0, 0, par * 0.2), ex = proj(1, 0, 0, par * 0.2), ey = proj(0, 1, 0, par * 0.2);
+      ctx.save(); ctx.globalAlpha = aj.nev * (1 - 0.35 * esp) / (1 + (zoom - 1) * 0.6);
+      ctx.setTransform(DPR * (ex.X - o.X), DPR * (ex.Y - o.Y), DPR * (ey.X - o.X), DPR * (ey.Y - o.Y), DPR * o.X, DPR * o.Y);
+      ctx.rotate(giroNevoa); ctx.drawImage(nevoa, -360, -360); ctx.restore();
+      if (esp > 0.01) {     // no Espacial, um bojo esférico bem leve dá corpo ao centro
+        const gb = ctx.createRadialGradient(o.X, o.Y, 0, o.X, o.Y, 120 * zoom);
+        gb.addColorStop(0, `rgba(150,158,172,${0.16 * esp * aj.nev / 0.45})`); gb.addColorStop(1, 'rgba(150,158,172,0)');
+        ctx.fillStyle = gb; ctx.beginPath(); ctx.arc(o.X, o.Y, 120 * zoom, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+
+    // órbitas internas (3D)
+    for (const o of ORBITAS) {
+      o.rot += o.gira * dt * vel;
+      const ry = o.prec ? o.ry * (0.72 + 0.28 * (1 - esp) * Math.sin(tempo * o.prec * 6.28 + o.rx)) + o.ry * 0.28 * esp : o.ry;
+      const cr = Math.cos(o.rot), sr = Math.sin(o.rot), inc = (o.inc || 0) * esp;
+      const ond = Math.sin(tempo * o.f * 6.28 + o.ph), odx = o.dx + Math.cos(tempo * o.f * 4.4 + o.ph) * o.passeio, ody = o.dy + ond * o.passeio * 0.7;
+      const resp = 1 + 0.025 * ond;
+      ctx.strokeStyle = `rgba(242,182,76,${o.a})`; ctx.lineWidth = o.w;
+      ctx.setLineDash(o.tracejado ? [1.5, 5] : []);
+      ctx.beginPath();
+      for (let i = 0; i <= 120; i++) {
+        const t = i / 120 * Math.PI * 2, ex = Math.cos(t) * o.rx * resp, ey = Math.sin(t) * ry * resp;
+        const x = odx + ex * cr - ey * sr, y = (ody + ex * sr + ey * cr) * 0.965, h = Math.sin(t) * ry * inc;
+        const q = proj(x, y, h, par * 0.3); i ? ctx.lineTo(q.X, q.Y) : ctx.moveTo(q.X, q.Y);
+      }
+      ctx.stroke();
+    }
+    ctx.setLineDash([1, 7]); ctx.strokeStyle = 'rgba(242,182,76,.28)'; ctx.lineWidth = 0.8;
+    { const a1 = proj(0, -272, 0, par * 0.3), a2 = proj(0, 270, 0, par * 0.3); ctx.beginPath(); ctx.moveTo(a1.X, a1.Y); ctx.lineTo(a2.X, a2.Y); ctx.stroke(); }
+    ctx.setLineDash([]);
+
+    // estrelas do cluster
+    for (const s of estrelas) {
+      s.a -= omega(s.r, 1 + (s.sorte - 1) * vari) * dt * vel;
+      const r = s.r + Math.sin(tempo * 0.3 + s.wob) * s.wobA;
+      const q = proj(Math.cos(s.a) * r, Math.sin(s.a) * r * 0.965, s.h * esp, par * (0.4 + s.z * 0.9));
+      const perto = esp > 0.01 ? Math.max(0.55, Math.min(1.6, 1 + q.d / 400)) : 1;   // no Espacial, a frente fica maior e mais clara
+      desenharEstrela(q.X, q.Y, s.tam * perto * Math.min(2.2, Math.sqrt(zoom)), brilhoCint(s) * Math.min(1, perto), s.cor);
+    }
+    // supernovas
+    for (const s of supernovas) {
+      s.a -= omega(s.r, 1 + (s.sorte - 1) * vari) * dt * vel;
+      const q = proj(Math.cos(s.a) * s.r, Math.sin(s.a) * s.r * 0.965, s.h * esp, par);
+      const tam = s.tam * Math.min(2, Math.sqrt(zoom));
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.9; ctx.drawImage(SP[s.cor], q.X - tam, q.Y - tam, tam * 2, tam * 2);
+      for (const [ang, len] of [[0, tam * 2.4], [Math.PI / 2, tam * 2.4], [Math.PI / 4, tam * 1.1], [-Math.PI / 4, tam * 1.1]]) {
+        ctx.save(); ctx.translate(q.X, q.Y); ctx.rotate(ang);
+        const gl = ctx.createLinearGradient(-len, 0, len, 0);
+        gl.addColorStop(0, 'rgba(235,240,255,0)'); gl.addColorStop(0.5, 'rgba(245,248,255,.55)'); gl.addColorStop(1, 'rgba(235,240,255,0)');
+        ctx.fillStyle = gl; ctx.fillRect(-len, -0.5, len * 2, 1); ctx.restore();
+      }
+      ctx.restore();
+    }
+    // turbilhão perto do núcleo: rápido, com rastro curto (em 3D: o rastro é uma curvinha projetada)
+    atualizarFala(dt);
+    ctx.lineCap = 'round';
+    for (const s of turbilhao) {
+      const w = s.w * (1 + (vari - 0.8) * 0.5);
+      s.a -= w * dt * vel;
+      const rastro = Math.min(1.1, w * 0.35);
+      const az = (1 / (1 + (zoom - 1) * 0.7)) * (1 + fala.luz * 1.3);   // de perto, os rastros ficam mais discretos; quando o JARVIS fala, acendem
+      ctx.strokeStyle = s.cor === 'ouro' ? `rgba(250,196,110,${s.brilho * 0.55 * az})` : s.cor === 'ciano' ? `rgba(160,226,242,${s.brilho * 0.55 * az})` : `rgba(240,236,226,${s.brilho * 0.5 * az})`;
+      ctx.lineWidth = s.tam * Math.min(1.6, Math.sqrt(zoom));
+      ctx.beginPath();
+      for (let i = 0; i <= 5; i++) {
+        const a = s.a + rastro * i / 5, ex = Math.cos(a) * s.r, ey = Math.sin(a) * s.r * s.ry;
+        const x = ex * Math.cos(-0.25) - ey * Math.sin(-0.25), y = ex * Math.sin(-0.25) + ey * Math.cos(-0.25);
+        const q = proj(x, y, s.h * esp, par * 0.35); i ? ctx.lineTo(q.X, q.Y) : ctx.moveTo(q.X, q.Y);
+      }
+      ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+
+    // núcleo: brilho de lente constante, sempre de frente para a câmera
+    const nq = proj(0, 0, 0, par * 0.3), kz = Math.min(1.8, Math.sqrt(zoom));
+    ctx.save(); ctx.translate(nq.X, nq.Y); ctx.scale(kz, kz);
+    ctx.globalCompositeOperation = 'lighter';
+    let g = ctx.createRadialGradient(0, 0, 0, 0, 0, 150);
+    g.addColorStop(0, 'rgba(255,214,140,.50)'); g.addColorStop(0.18, 'rgba(250,180,80,.26)'); g.addColorStop(0.5, 'rgba(240,160,60,.08)'); g.addColorStop(1, 'rgba(240,160,60,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, 150, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,205,120,.16)'; ctx.lineWidth = 0.6;
+    for (let rr = 9; rr <= 58; rr += 5.5) { ctx.beginPath(); ctx.arc(0, 0, rr, 0, Math.PI * 2); ctx.stroke(); }
+    const espiga = (ang, len, larg, a) => {
+      ctx.save(); ctx.rotate(ang);
+      const gl = ctx.createLinearGradient(-len, 0, len, 0);
+      gl.addColorStop(0, 'rgba(255,220,160,0)'); gl.addColorStop(0.5, `rgba(255,236,200,${a})`); gl.addColorStop(1, 'rgba(255,220,160,0)');
+      ctx.fillStyle = gl; ctx.beginPath(); ctx.ellipse(0, 0, len, larg, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    };
+    espiga(0, 270, 1.8, 0.48); espiga(Math.PI / 2, 132, 1.3, 0.36);
+    espiga(Math.PI / 4, 64, 0.9, 0.22); espiga(-Math.PI / 4, 64, 0.9, 0.22);
+    ctx.strokeStyle = 'rgba(255,210,140,.1)'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(0, 0, 84, 0, Math.PI * 2); ctx.stroke();
+    { const gh = ctx.createRadialGradient(0, 0, 96, 0, 0, 118);      // halo cromático: azul por dentro, âmbar por fora
+      gh.addColorStop(0, 'rgba(120,180,255,0)'); gh.addColorStop(0.35, 'rgba(120,180,255,.04)'); gh.addColorStop(0.65, 'rgba(255,190,110,.04)'); gh.addColorStop(1, 'rgba(255,190,110,0)');
+      ctx.fillStyle = gh; ctx.beginPath(); ctx.arc(0, 0, 118, 0, Math.PI * 2); ctx.fill(); }
+    g = ctx.createRadialGradient(0, 0, 0, 0, 0, 30);
+    g.addColorStop(0, 'rgba(255,253,245,1)'); g.addColorStop(0.25, 'rgba(255,232,180,.95)'); g.addColorStop(0.6, 'rgba(250,190,90,.45)'); g.addColorStop(1, 'rgba(246,170,60,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, 30, 0, Math.PI * 2); ctx.fill();
+    if (fala.luz > 0.003) {      // fala: as estrelas centrais e o núcleo ganham uma luz suave, que respira com o texto
+      const L = fala.luz;
+      g = ctx.createRadialGradient(0, 0, 0, 0, 0, 120);
+      g.addColorStop(0, `rgba(255,240,205,${0.42 * L})`); g.addColorStop(0.22, `rgba(255,212,140,${0.22 * L})`); g.addColorStop(0.55, `rgba(200,220,255,${0.06 * L})`); g.addColorStop(1, 'rgba(200,220,255,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, 120, 0, Math.PI * 2); ctx.fill();
+      g = ctx.createRadialGradient(0, 0, 0, 0, 0, 22);
+      g.addColorStop(0, `rgba(255,255,250,${0.5 * L})`); g.addColorStop(1, 'rgba(255,240,210,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, 22, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+
+    // estrelas de dados (posição projetada; as que nascem saem do seu centralizador)
+    const VEL_SURGIR = 6.5, VEL_SUMIR = 9;
+    for (const d of dados) {
+      d.para = (d.para || 0) + ((d === sobre || d === aberto ? 1 : 0) - (d.para || 0)) * Math.min(1, dt * 10); if (d.para > 0.995) d.para = 1;   // sob o mouse, a estrela freia até parar
+      d.a -= omega(d.r, 1 + (d.sorte - 1) * vari) * dt * vel * (1 - d.para);
+      const q = proj(Math.cos(d.a) * d.r, Math.sin(d.a) * d.r * 0.965, d.h * esp, par * (0.4 + d.z * 0.9));
+      d.x = q.X; d.y = q.Y; d.d = q.d;
+      if (d.nasce < 1) {
+        d.nasce = Math.min(1, d.nasce + dt * 1.1);
+        const g2 = GRUPOS.find(x => x.id === d.grupo), e = easeOut(Math.max(0, d.nasce));
+        d.x = g2.cur[0] + (q.X - g2.cur[0]) * e; d.y = g2.cur[1] + (q.Y - g2.cur[1]) * e;
+      }
+      const alvo = d.grupo === ativo ? 1 : 0;
+      d.ligado += (alvo - d.ligado) * Math.min(1, dt * (alvo ? VEL_SURGIR : VEL_SUMIR));
+      if (d.ligado < 0.002) d.ligado = 0;
+    }
+    // conceitos: mesma órbita do arquivo de origem; o "aceso" vem do raciocínio do JARVIS e apaga devagar
+    const apaga = fala.alvo ? 0.04 : 0.22;
+    for (const c of conceitos) {
+      c.a -= omega(c.r, 1 + (c.sorte - 1) * vari) * dt * vel * (1 - (c.para || 0));
+      const q = proj(Math.cos(c.a) * c.r, Math.sin(c.a) * c.r * 0.965, c.h * esp, par * (0.4 + c.z * 0.9));
+      c.x = q.X; c.y = q.Y; c.aceso = Math.max(0, c.aceso - dt * apaga);
+    }
+    for (const d of dados) d.aceso = Math.max(0, (d.aceso || 0) - dt * apaga);
+    // qual estrela de arquivo está sob o mouse (a mais próxima, até 11 px)
+    sobre = null;
+    if (!arrasto) { let melhor = 11; for (const d of dados) { if (d.nasce < 1) continue; const dd = Math.hypot(d.x - mouse.x, d.y - mouse.y); if (dd < melhor) { melhor = dd; sobre = d; } } }
+    cv.classList.toggle('arquivo-hover', !!sobre);
+    if (aberto) posicionarCartao();
+    sobreC = null;
+    if (!arrasto && !sobre) { let melhor = 7; for (const c of conceitos) { const dd = Math.hypot(c.x - mouse.x, c.y - mouse.y); if (dd < melhor) { melhor = dd; sobreC = c; } } }
+    ctx.font = `${10.5 * aj.fs}px Inter, system-ui, sans-serif`; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+    const focoArq = sobre || aberto;
+    for (const c of conceitos) {
+      const k = c.aceso, doFoco = focoArq && c.estrela === focoArq.id;
+      desenharEstrela(c.x, c.y, c.tam * (1 + k * 0.8) * Math.min(1.6, Math.sqrt(zoom)), 0.42 + 0.5 * Math.max(k, doFoco ? 0.6 : 0), k > 0.2 ? 'branco' : c.cor);
+      if (doFoco) { ctx.strokeStyle = 'rgba(169,200,242,.22)'; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.moveTo(focoArq.x, focoArq.y); ctx.lineTo(c.x, c.y); ctx.stroke(); }
+      const recente = c.tocado ? Math.max(0, 1 - (performance.now() - c.tocado - 1800) / 900) : 0;
+      const aR = c === sobreC ? 1 : Math.max(Math.min(1, recente) * 0.85, doFoco ? 0.75 : 0, suave(2.4, 3.6, zoom) * Math.min(1, (c.grau || 0) / 6) * 0.6);
+      if (aR > 0.04) {
+        const forteC = c === sobreC || doFoco || recente > 0.1;
+        ctx.font = `${(forteC ? 10.5 : 8) * aj.fs}px Inter, system-ui, sans-serif`;
+        ctx.fillStyle = `rgba(210,228,250,${forteC ? aR : aR * 0.45})`; ctx.fillText(c.rot, c.x + (forteC ? 7 : 5), c.y);
+      }
+    }
+    ctx.font = `${12 * aj.fs}px Inter, system-ui, sans-serif`; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+    // com zoom, os nomes de todos os arquivos aparecem, fracos; os do grupo ativo ficam em destaque
+    const verTodos = suave(1.5, 2.6, zoom);
+    for (const d of dados) {
+      if (d.nasce <= 0) continue;
+      const l = d.ligado, vis = Math.max(0, d.nasce);
+      desenharEstrela(d.x, d.y, (1.8 + l * 1.3) * Math.min(1.8, Math.sqrt(zoom)), (0.74 + l * 0.26) * vis, l > 0.5 ? 'azul' : 'ouro');   // conhecimento: um pouco mais nítidas que as decorativas
+      if (l > 0.02) {
+        ctx.fillStyle = `rgba(160,198,245,${l * vis})`; ctx.beginPath(); ctx.arc(d.x, d.y, 2.6, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = `rgba(160,198,245,${l * 0.45 * vis})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(d.x, d.y, 5.5, 0, Math.PI * 2); ctx.stroke();
+      }
+      if (d.aceso > 0.02) {     // o JARVIS passou por aqui: anel dourado-claro que apaga devagar
+        ctx.strokeStyle = `rgba(255,226,170,${0.8 * d.aceso * vis})`; ctx.lineWidth = 1.1; ctx.beginPath(); ctx.arc(d.x, d.y, 6 + 3 * d.aceso, 0, Math.PI * 2); ctx.stroke();
+      }
+      const foco = d === sobre || d === aberto;
+      if (foco) {     // destaque de hover: anel maior e nome bem visível
+        ctx.strokeStyle = 'rgba(200,222,250,.9)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(d.x, d.y, 9, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = 'rgba(200,222,250,.25)'; ctx.beginPath(); ctx.arc(d.x, d.y, 14, 0, Math.PI * 2); ctx.stroke();
+      }
+      const recenteD = d.tocado ? Math.max(0, Math.min(1, 1 - (performance.now() - d.tocado - 1800) / 900)) : 0;
+      const aRot = foco ? 1 : Math.max(l * 0.95, verTodos * 0.5, recenteD * 0.95) * vis;
+      if (aRot > 0.02) {
+        const forte = foco || l > 0.3 || recenteD > 0.1;
+        ctx.font = `${(forte ? 12 : 8.5) * aj.fs}px Inter, system-ui, sans-serif`;     // inativas: pequenas e bem transparentes
+        ctx.fillStyle = foco ? '#ffffff' : forte ? `rgba(232,236,244,${aRot})` : `rgba(242,214,170,${aRot * 0.45})`;
+        ctx.fillText(d.rot, d.x + (foco ? 17 : forte ? 11 : 7), d.y);
+      }
+    }
+    ctx.restore();
+
+    // anel externo pontilhado, zodíaco, brilho de fala: fixos (não giram nem fazem zoom)
+    ctx.save(); ctx.translate(C.x - pmx * aj.par * 0.3, C.y - pmy * aj.par * 0.3);
+    ctx.strokeStyle = 'rgba(214,194,150,.3)'; ctx.lineWidth = 0.7; ctx.setLineDash([5, 11]); ctx.lineDashOffset = -tempo * 9; ctx.lineCap = 'butt';   // tracejado; os traços andam ~9 px/s
+    ctx.beginPath(); ctx.ellipse(0, 0, RING.rx, RING.ry, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); ctx.lineDashOffset = 0; ctx.lineCap = 'butt';
+    ctx.restore();
+    desenharZodiaco();
+
+    // conectores: do centralizador (fixo) até a estrela (onde ela estiver), em curva, crescendo
+    const ordemGrupo = {};
+    ctx.save(); ctx.beginPath(); ctx.rect(285, 40, 755, 650); ctx.clip();
+    for (const d of dados) {
+      if (d.ligado <= 0 || d.nasce < 0) continue;
+      // só liga estrelas que estão na área central (com zoom, muitas saem da tela)
+      const fora = suave(285, 320, d.x) * (1 - suave(1005, 1040, d.x)) * suave(40, 70, d.y) * (1 - suave(660, 690, d.y)); if (fora <= 0) continue;
+      const g2 = GRUPOS.find(x => x.id === d.grupo);
+      const idx = (ordemGrupo[d.grupo] = (ordemGrupo[d.grupo] ?? -1) + 1);
+      if (idx >= 18) continue;                       // grupos grandes: linhas só para as 18 mais recentes (as outras ficam azuis)
+      const [hx, hy] = g2.cur;
+      const cresce = d.grupo === ativo ? Math.min(1, Math.max(0, d.ligado * 1.25 - idx * 0.04)) : 1;
+      const cx = hx + (d.x - hx) * 0.22, cy = hy + (d.y - hy) * 0.78, fim = easeOut(cresce);
+      ctx.strokeStyle = `rgba(169,200,242,${0.62 * d.ligado * g2.vis * fora})`; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(hx, hy);
+      for (let i = 1; i <= 24; i++) {
+        const t = fim * i / 24, u = 1 - t;
+        ctx.lineTo(u * u * hx + 2 * u * t * cx + t * t * d.x, u * u * hy + 2 * u * t * cy + t * t * d.y);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+    // pasta selecionada no card de diretórios: linhas da pasta até as suas estrelas (até 30, as mais recentes)
+    if (dirs.sel && dirs.sel.el.isConnected) {
+      const r = retNoPalco(dirs.sel.el), hx = r.x + 4, hy = r.y + r.h / 2, vistos = new Set();
+      const alvo = dados.filter(d => d.nasce >= 1 && daPasta(d, dirs.sel) && !vistos.has(d.id) && vistos.add(d.id)).slice(0, 30);
+      const cres = easeOut(Math.min(1, (performance.now() - dirs.sel.t) / 600));
+      ctx.save(); ctx.lineWidth = 0.9;
+      alvo.forEach((d, i) => {
+        const f = Math.max(0, Math.min(1, cres * 1.3 - i * 0.012)), cx = hx + (d.x - hx) * 0.7, cy = hy + (d.y - hy) * 0.15;
+        ctx.strokeStyle = 'rgba(169,200,242,.5)'; ctx.beginPath(); ctx.moveTo(hx, hy);
+        for (let k = 1; k <= 20; k++) { const t = f * k / 20, u = 1 - t; ctx.lineTo(u * u * hx + 2 * u * t * cx + t * t * d.x, u * u * hy + 2 * u * t * cy + t * t * d.y); }
+        ctx.stroke();
+        if (f >= 1) { ctx.fillStyle = 'rgba(190,214,248,.95)'; ctx.beginPath(); ctx.arc(d.x, d.y, 2.6, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = 'rgba(190,214,248,.45)'; ctx.beginPath(); ctx.arc(d.x, d.y, 6, 0, Math.PI * 2); ctx.stroke(); }
+      });
+      ctx.restore();
+    }
+    // raciocínio visível: cada consulta desenha rápido uma constelação entre o que foi encontrado,
+    // encadeada à anterior; as mais antigas se desfazem enquanto o raciocínio segue
+    if (constelacao.length) {
+      const agoraC = performance.now(), ponto = o => o === 'nucleo' ? { x: nq.X, y: nq.Y } : o;
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+      constelacao = constelacao.filter(sg => agoraC - sg.t < VIDA_CONST);
+      for (const sg of constelacao) {
+        const idade = agoraC - sg.t; if (idade < 0) continue;
+        const cres = easeOut(Math.min(1, idade / 280)), al = 0.85 * Math.exp(-Math.max(0, idade - 900) / 2800);
+        if (al < 0.01) continue;
+        const A = ponto(sg.a), B = ponto(sg.b), ex = A.x + (B.x - A.x) * cres, ey = A.y + (B.y - A.y) * cres;
+        ctx.strokeStyle = `rgba(222,236,255,${al})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(ex, ey); ctx.stroke();
+        ctx.strokeStyle = `rgba(169,200,242,${al * 0.25})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(ex, ey); ctx.stroke();
+        if (cres >= 1) {        // o vértice acende quando a linha chega
+          const r = 2.2 + 1.5 * Math.exp(-Math.max(0, idade - 280) / 300);
+          ctx.fillStyle = `rgba(240,246,255,${Math.min(1, al * 1.4)})`; ctx.beginPath(); ctx.arc(B.x, B.y, r * 0.6, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = `rgba(214,232,255,${al * 0.6})`; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.arc(B.x, B.y, r + 2.5, 0, Math.PI * 2); ctx.stroke();
+        }
+      }
+      ctx.restore();
+    }
+    desenharFlare(par, nq);
+    requestAnimationFrame(quadro);
+  }
+
+  // ---------- cartão de um arquivo ----------
+  const cartao = document.getElementById('arquivo');
+  const quando = t => {
+    const dias = Math.floor((Date.now() / 1000 - t) / 86400);
+    return dias <= 0 ? 'hoje' : dias === 1 ? 'ontem' : dias < 7 ? `há ${dias} dias` : dias < 60 ? `há ${Math.round(dias / 7)} semanas` : new Date(t * 1000).toLocaleDateString('pt-BR');
+  };
+  const NOME_TIPO = { nota: 'Nota', skill: 'Skill', conversa: 'Conversa', artefato: 'Artefato' };
+  function abrirArquivo(d) {
+    aberto = d; mexeu();
+    const it = d.item || {};
+    document.getElementById('a-nome').textContent = it.titulo || d.rot;
+    document.getElementById('a-info').textContent = [NOME_TIPO[it.tipo], it.fonte, it.modificado ? 'modificado ' + quando(it.modificado) : ''].filter(Boolean).join(' · ');
+    document.getElementById('a-abrir').textContent = it.tipo === 'conversa' ? 'Abrir no chat' : 'Abrir no Mac';
+    cartao.classList.add('aberto'); posicionarCartao();
+  }
+  function fecharArquivo() { aberto = null; cartao.classList.remove('aberto'); }
+  function posicionarCartao() {
+    const x = Math.min(1030 - 248, Math.max(290, aberto.x + 18)), y = Math.min(640, Math.max(48, aberto.y + 16));
+    cartao.style.left = x + 'px'; cartao.style.top = y + 'px';
+  }
+  const postar = (rota, corpo) => fetch(rota, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Jarvis': '1' }, body: JSON.stringify(corpo) });
+  document.getElementById('a-fechar').onclick = fecharArquivo;
+  // "Abrir": conversa vai para o chat (maximizado); o resto abre no app padrão do Mac
+  document.getElementById('a-abrir').onclick = () => {
+    const d = aberto; fecharArquivo(); if (!d || !d.item) return;
+    if (d.item.tipo === 'conversa') { abrirConversa(d.item); maximizar(); }
+    else postar('/api/abrir', { id: d.item.id });
+  };
+  // "Perguntar ao Claude": a estrela vira o contexto da próxima conversa
+  document.getElementById('a-claude').onclick = () => {
+    const it = aberto.item; fecharArquivo(); if (!it) return;
+    if (conv.ocupado) return;
+    conv.id = Math.random().toString(36).slice(2); conv.sessao = null; conv.ref = it.id;
+    msgs.innerHTML = ''; document.getElementById('c-tema').textContent = '· ' + it.titulo.slice(0, 40);
+    balao(`Sobre **${it.titulo}** (${it.curto}). O que você quer saber?`, false);
+    if (chatCard.classList.contains('recolhido')) recolher('chat');
+    texto.focus();
+  };
+  addEventListener('keydown', e => { if (e.key === 'Escape') { if (aberto) fecharArquivo(); else if (chatMax) minimizar(); } });
+
+  // ---------- Gmail, Agenda e Tarefas (dados reais; Gmail e Agenda vêm do servidor, atualizados a cada 30 min) ----------
+  const iniciais = n => n.replace(/\(.*?\)/g, '').trim().split(/\s+/).slice(0, 2).map(x => x[0] || '').join('').toUpperCase() || '·';
+  function perguntarSobre(txt) {
+    if (conv.ocupado) return;
+    conv.id = Math.random().toString(36).slice(2); conv.sessao = null; conv.ref = null;
+    msgs.innerHTML = ''; document.getElementById('c-tema').textContent = '';
+    if (chatCard.classList.contains('recolhido')) recolher('chat');
+    texto.value = txt; texto.focus();
+  }
+  async function carregarPainel() {
+    try {
+      const d = await (await fetch('/api/painel')).json();
+      const gl = document.getElementById('gmail-lista'), al = document.getElementById('agenda-lista');
+      document.querySelector('.gmail .atualizar').classList.toggle('girando', !!d.atualizando);
+      const g = d.google || {};
+      document.getElementById('google-conectar').hidden = !!g.conectado || !g.cliente;
+      document.getElementById('bt-google').textContent = g.login ? 'Esperando a autorização no navegador…' : g.erro && !g.conectado ? 'Conectar Google de novo' : 'Conectar Google';
+      document.querySelector('.gmail .atualizar').title = 'Atualizar Gmail e Agenda' + (d.fonte === 'api' ? ' (API do Google)' : ' (pelo Haiku)');
+      if (g.login) setTimeout(carregarPainel, 3000);
+      document.getElementById('painel-quando').textContent = d.atualizado ? 'atualizado ' + quandoMin(d.atualizado) : '';
+      if (!d.atualizado) { gl.innerHTML = al.innerHTML = `<div class="vazio">${d.atualizando ? 'Buscando…' : 'Ainda sem dados.'}</div>`; return; }
+      gl.innerHTML = d.emails.length ? '' : '<div class="vazio">Nada novo na caixa de entrada.</div>';
+      d.emails.slice(0, 4).forEach((m, i) => {
+        const el = document.createElement('div'); el.className = 'linha' + (m.importante || m.nao_lido ? ' ativa' : '');
+        el.title = m.resumo || m.assunto;
+        el.innerHTML = '<span class="av"></span><span><b></b><small></small></span><span class="hora"></span>';
+        el.children[0].textContent = iniciais(m.de); el.querySelector('b').textContent = m.de; el.querySelector('small').textContent = m.assunto; el.children[2].textContent = m.quando;
+        el.onclick = () => abrirEmail(m);
+        gl.appendChild(el);
+      });
+      al.innerHTML = d.agenda.length ? '' : '<div class="vazio">Nada na agenda nos próximos 14 dias.</div>';
+      let dia = null;
+      for (const ev of d.agenda.slice(0, 6)) {
+        if (ev.dia !== dia) { dia = ev.dia; const t = document.createElement('div'); t.className = 'dia'; t.textContent = dia[0].toUpperCase() + dia.slice(1); al.appendChild(t); }
+        const el = document.createElement('div'); el.className = 'linha';
+        el.innerHTML = '<span class="ponto"></span><span></span><span></span>';
+        el.children[1].textContent = ev.hora; el.children[2].textContent = ev.titulo; el.title = [ev.hora + (ev.fim ? '–' + ev.fim : ''), ev.titulo, ev.local].filter(Boolean).join(' · ');
+        el.onclick = () => perguntarSobre(`Sobre o compromisso "${ev.titulo}" (${ev.dia}, ${ev.hora}): `);
+        al.appendChild(el);
+      }
+      if (d.atualizando) setTimeout(carregarPainel, 5000);
+    } catch { /* sem servidor */ }
+  }
+  const quandoMin = t => { const m = Math.round((Date.now() / 1000 - t) / 60); return m < 1 ? 'agora' : m < 60 ? `há ${m} min` : `há ${Math.round(m / 60)} h`; };
+  document.querySelector('.gmail .atualizar').addEventListener('click', async () => { await postar('/api/painel', {}); document.querySelector('.gmail .atualizar').classList.add('girando'); setTimeout(carregarPainel, 1500); });
+  // ---------- janela do e-mail: ler, responder, encaminhar, arquivar numa label, lixeira ----------
+  const je = id => document.getElementById(id), janela = je('janela-email');
+  let emailAberto = null, modoForm = null;
+  const jeStatus = (t, ocupado) => { je('je-status').textContent = t || ''; janela.querySelectorAll('.je-acoes button, #je-enviar').forEach(b => b.disabled = !!ocupado || (b.id === 'je-arquivar' && !je('je-label').value)); };
+  const gmailAcao = async corpo => { const r = await postar('/api/gmail', corpo); const d = await r.json(); if (!r.ok) throw new Error(d.erro || r.status); return d; };
+  async function abrirEmail(m) {
+    emailAberto = m; modoForm = null; je('je-form').hidden = true; janela.classList.remove('larga');
+    je('je-av').textContent = iniciais(m.de); je('je-de').textContent = m.de; je('je-assunto').textContent = m.assunto; je('je-quando').textContent = m.quando;
+    je('je-corpo').innerHTML = ''; const p = document.createElement('div'); p.className = 'je-msg'; p.textContent = m.resumo || ''; je('je-corpo').appendChild(p);
+    janela.classList.add('aberta'); jeStatus('Carregando a conversa…', false);
+    carregarLabels();
+    try {
+      const d = await gmailAcao({ acao: 'ler', thread_id: m.thread_id }); if (emailAberto !== m) return;
+      je('je-corpo').innerHTML = '';
+      for (const x of d.mensagens || []) {
+        const el = document.createElement('div'); el.className = 'je-msg'; el.innerHTML = '<small></small><span></span>';
+        el.firstChild.textContent = `${x.de}${x.quando ? ' · ' + x.quando : ''}`; el.children[1].textContent = x.texto;
+        if (x.html) {                                // o e-mail como foi desenhado, isolado; imagens externas só no clique
+          const ver = document.createElement('div'); ver.className = 'je-ver';
+          const bOrig = document.createElement('button'); bOrig.textContent = 'Ver original' + (x.embutidas ? ` (${x.embutidas} ${x.embutidas === 1 ? 'imagem' : 'imagens'})` : '');
+          const bImg = document.createElement('button'); bImg.textContent = `Carregar imagens externas (${x.externas})`; bImg.hidden = true;
+          bImg.title = 'Busca as imagens no site de quem enviou (ele fica sabendo que você abriu)';
+          let frame = null;
+          const mostrar = externas => {
+            if (!frame) { frame = document.createElement('iframe'); frame.setAttribute('sandbox', 'allow-popups allow-popups-to-escape-sandbox'); frame.referrerPolicy = 'no-referrer'; el.insertBefore(frame, ver.nextSibling); }
+            // o HTML vem pela página e entra como srcdoc: o quadro fica isolado (sandbox, sem script) e a própria
+            // página do e-mail traz a CSP que bloqueia imagens externas até o clique
+            fetch(`/api/gmail/html?msg=${encodeURIComponent(x.id)}&externas=${externas ? 1 : 0}`).then(r => r.text()).then(h => { frame.srcdoc = h; });
+            frame.dataset.ext = externas ? '1' : '0'; el.children[1].hidden = true; janela.classList.add('larga');
+            bOrig.textContent = 'Ver texto'; bImg.hidden = externas || !x.externas;
+          };
+          bOrig.onclick = () => {
+            if (frame && !frame.hidden) { frame.hidden = true; el.children[1].hidden = false; bOrig.textContent = 'Ver original'; bImg.hidden = true; janela.classList.toggle('larga', !!janela.querySelector('.je-msg iframe:not([hidden])')); return; }
+            if (frame) { frame.hidden = false; el.children[1].hidden = true; janela.classList.add('larga'); bOrig.textContent = 'Ver texto'; bImg.hidden = !x.externas || frame.dataset.ext === '1'; return; }
+            mostrar(false);
+          };
+          bImg.onclick = () => mostrar(true);
+          ver.append(bOrig, bImg); el.appendChild(ver);
+        }
+        if (x.anexos && x.anexos.length) {           // anexos: abrem numa aba (PDF e imagens aparecem direto)
+          const box = document.createElement('div'); box.className = 'je-anexos';
+          for (const a of x.anexos) {
+            const l = document.createElement('a'); l.target = '_blank'; l.rel = 'noopener';
+            l.href = `/api/gmail/anexo?msg=${encodeURIComponent(x.id)}&att=${encodeURIComponent(a.id)}&nome=${encodeURIComponent(a.nome)}`;
+            l.innerHTML = '📎<span></span><small></small>'; l.children[0].textContent = a.nome; l.children[1].textContent = tamanho(a.tamanho || 0);
+            box.appendChild(l);
+          }
+          el.appendChild(box);
+        }
+        je('je-corpo').appendChild(el);
+      }
+      je('je-corpo').scrollTop = je('je-corpo').scrollHeight; jeStatus('');
+    } catch (err) { jeStatus('Não consegui ler a conversa: ' + err.message); }
+  }
+  async function carregarLabels() {
+    if (je('je-label').options.length > 1) return;
+    try { const d = await gmailAcao({ acao: 'labels' }); for (const l of d.labels || []) { const o = document.createElement('option'); o.value = l.nome; o.textContent = l.nome; je('je-label').appendChild(o); } } catch {}
+  }
+  function fecharEmail() { janela.classList.remove('aberta'); emailAberto = null; }
+  je('je-fechar').onclick = fecharEmail;
+  addEventListener('keydown', e => { if (e.key === 'Escape' && janela.classList.contains('aberta')) { e.stopImmediatePropagation(); fecharEmail(); } }, true);
+  const abrirForm = modo => { modoForm = modo; je('je-form').hidden = false; je('je-para').hidden = modo !== 'encaminhar'; je('je-texto').placeholder = modo === 'responder' ? 'Sua resposta…' : 'Nota (opcional)…'; je('je-enviar').textContent = modo === 'responder' ? 'Enviar resposta' : 'Encaminhar'; (modo === 'encaminhar' ? je('je-para') : je('je-texto')).focus(); };
+  je('je-responder').onclick = () => abrirForm('responder');
+  je('je-encaminhar').onclick = () => abrirForm('encaminhar');
+  je('je-cancelar').onclick = () => { je('je-form').hidden = true; modoForm = null; };
+  [je('je-texto'), je('je-para')].forEach(x => x.addEventListener('keydown', e => e.stopPropagation()));
+  je('je-label').onchange = () => jeStatus('');
+  je('je-enviar').onclick = async () => {
+    const m = emailAberto, txt = je('je-texto').value.trim(), para = je('je-para').value.trim();
+    if (modoForm === 'responder' && !txt) return jeStatus('Escreva a resposta.');
+    if (modoForm === 'encaminhar' && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(para)) return jeStatus('Coloque um e-mail válido em "Para".');
+    const aviso = modoForm === 'responder' ? `Enviar esta resposta para ${m.de}?` : `Encaminhar "${m.assunto}" para ${para}?`;
+    if (!confirm(aviso + '\n\nDepois de enviado, não dá para desfazer.')) return;
+    jeStatus(modoForm === 'responder' ? 'Enviando…' : 'Encaminhando…', true);
+    try { const d = await gmailAcao({ acao: modoForm, thread_id: m.thread_id, texto: txt, para }); jeStatus(d.ok ? 'Feito. ' + (d.detalhe || '') : 'Não deu certo: ' + d.detalhe); if (d.ok) { je('je-texto').value = ''; je('je-form').hidden = true; } }
+    catch (err) { jeStatus('Erro: ' + err.message); }
+  };
+  je('je-arquivar').onclick = async () => {
+    const label = je('je-label').value, m = emailAberto; if (!label) return;
+    jeStatus(`Arquivando em ${label}…`, true);
+    try { const d = await gmailAcao({ acao: 'arquivar', thread_id: m.thread_id, label }); jeStatus(d.ok ? `Arquivado em ${label}.` : 'Não deu certo: ' + d.detalhe); if (d.ok) { carregarPainel(); setTimeout(fecharEmail, 900); } }
+    catch (err) { jeStatus('Erro: ' + err.message); }
+  };
+  je('je-naolido').onclick = async () => {
+    const m = emailAberto; jeStatus('Marcando como não lido…', true);
+    try { const d = await gmailAcao({ acao: 'nao_lido', thread_id: m.thread_id }); jeStatus(d.ok ? 'Marcado como não lido.' : 'Não deu certo: ' + d.detalhe); if (d.ok) { carregarPainel(); setTimeout(fecharEmail, 700); } }
+    catch (err) { jeStatus('Erro: ' + err.message); }
+  };
+  je('je-lixeira').onclick = async () => {
+    const m = emailAberto; if (!confirm(`Mandar "${m.assunto}" para a lixeira?`)) return;
+    jeStatus('Mandando para a lixeira…', true);
+    try { const d = await gmailAcao({ acao: 'lixeira', thread_id: m.thread_id }); jeStatus(d.ok ? 'Na lixeira.' : 'Não deu certo: ' + d.detalhe); if (d.ok) { carregarPainel(); setTimeout(fecharEmail, 900); } }
+    catch (err) { jeStatus('Erro: ' + err.message); }
+  };
+  je('je-jarvis').onclick = () => { const m = emailAberto; fecharEmail(); perguntarSobre(`Resuma o e-mail de ${m.de} sobre "${m.assunto}" (thread ${m.thread_id}) e diga se pede alguma ação minha.`); };
+
+  document.getElementById('bt-google').onclick = async () => {
+    const r = await postar('/api/google/conectar', {}); const d = await r.json().catch(() => ({}));
+    if (!r.ok) return alert(d.erro || 'Não consegui iniciar o login.');
+    carregarPainel();
+    const espera = setInterval(async () => { const p = await (await fetch('/api/painel')).json(); if (p.google && !p.google.login) { clearInterval(espera); if (p.google.conectado) postar('/api/painel', {}); setTimeout(carregarPainel, 1500); } }, 3000);
+  };
+  const tamanho = b => b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
+
+  async function carregarTarefas(lista) {
+    const tl = document.getElementById('tarefas-lista');
+    try { lista = lista || (await (await fetch('/api/tarefas')).json()).tarefas; } catch { return; }
+    tl.innerHTML = lista.length ? '' : '<div class="vazio">Sem tarefas. Peça ao JARVIS ("anota a tarefa …") ou escreva em Tarefas.md no cofre.</div>';
+    lista.slice(-6).forEach(t => {
+      const el = document.createElement('div'); el.className = 'tarefa' + (t.feita ? ' feita' : '');
+      el.innerHTML = '<i></i><span></span>'; el.lastChild.textContent = t.texto;
+      el.onclick = async () => { const i = lista.indexOf(t); const r = await postar('/api/tarefas', { i, feita: !t.feita }); if (r.ok) carregarTarefas((await r.json()).tarefas); };
+      tl.appendChild(el);
+    });
+  }
+  carregarPainel(); carregarTarefas();
+  setInterval(carregarPainel, 60000); setInterval(() => carregarTarefas(), 20000);
+
+  // atalhos de app no menu: a janela abre já no clique (senão o navegador bloqueia) e recebe o endereço
+  async function abrirApp(app) {
+    const w = window.open('about:blank', '_blank');
+    try {
+      const r = await postar('/api/app', { app }); const d = await r.json();
+      if (d.erro) { w && w.close(); alert(d.erro); return; }
+      if (w) w.location = d.url; if (d.aviso) setTimeout(() => alert(d.aviso), 300);
+    } catch { w && w.close(); }
+  }
+
+  // ---------- card de diretórios: abas Claude / Drive / Mac ----------
+  // clique na pasta destaca as estrelas dela no cluster; › entra; ☆ marca a pasta para indexar
+  const dirs = { raiz: 'claude', caminho: '', pastas: [], sel: null };
+  const listaEl = document.querySelector('.projetos .lista'), ondeEl = document.querySelector('.projetos .onde'), voltarEl = document.querySelector('.projetos .voltar');
+  const IC_PASTA = '<svg viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v10H3z"/></svg>';
+  async function abrirPasta(raiz, caminho) {
+    dirs.raiz = raiz; dirs.caminho = caminho || '';
+    document.querySelectorAll('.abas button').forEach((b, i) => { b.classList.toggle('sel', b.dataset.r === raiz); if (b.dataset.r === raiz) document.querySelector('.abas .pil').style.transform = `translateX(${i * 100}%)`; });
+    listaEl.innerHTML = '<div class="vazio">Carregando…</div>';
+    try {
+      const r = await fetch(`/api/pastas?raiz=${raiz}&caminho=${encodeURIComponent(dirs.caminho)}`); const d = await r.json();
+      if (!r.ok) throw new Error(d.erro);
+      dirs.pastas = d.pastas; ondeEl.textContent = d.titulo; voltarEl.hidden = !dirs.caminho;
+      listaEl.innerHTML = d.pastas.length ? '' : '<div class="vazio">Nenhuma pasta aqui.</div>';
+      d.pastas.forEach((p, i) => {
+        const el = document.createElement('div'); el.className = 'pasta' + (p.bloqueada ? ' bloqueada' : '') + (dirs.sel && dirs.sel.abs === p.abs ? ' ativa' : '');
+        el.title = p.bloqueada ? `${p.curto} · bloqueada` : `${p.curto} · ${p.estrelas} estrelas`;
+        el.innerHTML = `${IC_PASTA}<span class="nome"></span><span class="n">${p.bloqueada ? '🔒' : p.estrelas || ''}</span>` +
+          (d.podeMarcar && !p.bloqueada ? `<button class="marca${p.marcada ? ' on' : ''}${p.herdada ? ' herdada' : ''}" title="${p.marcada ? 'Indexada: clique para tirar do índice' : p.herdada ? 'Já indexada pela pasta de cima' : 'Indexar esta pasta'}">${p.marcada || p.herdada ? '★' : '☆'}</button>` : '') +
+          (p.entrar && !p.bloqueada ? '<span class="seta" title="Entrar">›</span>' : '');
+        el.querySelector('.nome').textContent = p.nome;
+        el.addEventListener('click', ev => {
+          if (p.bloqueada) return;
+          if (ev.target.closest('.seta')) { ev.stopPropagation(); return abrirPasta(raiz, p.caminho); }
+          if (ev.target.closest('.marca')) { ev.stopPropagation(); if (!p.herdada) marcarPasta(p); return; }
+          destacarPasta(dirs.sel && dirs.sel.abs === p.abs ? null : { ...p, el });
+        });
+        listaEl.appendChild(el);
+      });
+    } catch (err) { listaEl.innerHTML = `<div class="vazio">Não consegui listar: ${esc(err.message || '')}</div>`; }
+  }
+  async function marcarPasta(p) {
+    const ligar = !p.marcada;
+    if (ligar && !confirm(`Indexar "${p.nome}"?\n\nOs arquivos dela viram estrelas, o JARVIS passa a poder lê-los e as notas entram no grafo na próxima atualização (gasta tokens do Haiku uma vez).`)) return;
+    const r = await postar('/api/marcar', { raiz: dirs.raiz, caminho: p.caminho, marcar: ligar });
+    if (!r.ok) { alert('Não consegui: ' + ((await r.json().catch(() => ({}))).erro || r.status)); return; }
+    await carregarEstrelas(true); abrirPasta(dirs.raiz, dirs.caminho);
+  }
+  function destacarPasta(p) {
+    dirs.sel = p; mexeu();
+    listaEl.querySelectorAll('.pasta').forEach(el => el.classList.toggle('ativa', !!p && el === p.el));
+    if (p) { selecionar(null); p.t = performance.now(); }
+  }
+  const daPasta = (d, p) => d.item && (d.item.caminho.startsWith(p.abs + '/') || d.item.projeto === p.abs);
+  document.querySelectorAll('.abas button').forEach(b => b.addEventListener('click', () => { destacarPasta(null); abrirPasta(b.dataset.r, ''); }));
+  voltarEl.addEventListener('click', () => abrirPasta(dirs.raiz, dirs.caminho.split('/').slice(0, -1).join('/')));
+  abrirPasta('claude', '');
+
+  // ---------- coluna da direita: recolher um card dá o espaço ao outro ----------
+  const colDir = document.querySelector('.coluna.dir'), cardProj = document.querySelector('.card.projetos');
+  function recolher(qual) {
+    const proj = qual === 'projetos' ? !cardProj.classList.contains('recolhido') : false;
+    const chat = qual === 'chat' ? !document.querySelector('.card.chat').classList.contains('recolhido') : false;
+    cardProj.classList.toggle('recolhido', proj);
+    document.querySelector('.card.chat').classList.toggle('recolhido', chat);
+    colDir.classList.toggle('chat-recolhido', chat);
+    for (const b of document.querySelectorAll('.recolher')) { const r = b.closest('.card').classList.contains('recolhido'); b.title = r ? 'Expandir' : 'Recolher'; b.setAttribute('aria-label', b.title); }
+  }
+  cardProj.querySelector('.recolher').addEventListener('click', () => recolher('projetos'));
+  document.querySelector('.card.chat .recolher').addEventListener('click', e => { e.stopPropagation(); if (!chatMax) recolher('chat'); });
+
+  // ---------- chat maximizado ----------
+  const chatCard = document.querySelector('.card.chat'), lugar = document.createElement('div');
+  let chatMax = false, animando = false;
+  const retNoPalco = el => { const r = el.getBoundingClientRect(), p = palco.getBoundingClientRect(); return { x: (r.left - p.left) / escala, y: (r.top - p.top) / escala, w: r.width / escala, h: r.height / escala }; };
+  const aplicar = (el, r) => { el.style.left = r.x + 'px'; el.style.top = r.y + 'px'; el.style.width = r.w + 'px'; el.style.height = r.h + 'px'; };
+  const ALVO = { x: 296, y: 57, w: 1023, h: 628 };          // área central + coluna da direita
+  const icTam = document.getElementById('c-tam-ic'), bTam = document.getElementById('c-tam');
+  function maximizar() {
+    if (chatMax || animando) return;
+    if (chatCard.classList.contains('recolhido')) recolher('chat');      // se estava recolhido, abre antes de maximizar
+    chatMax = true; animando = true;
+    const r = retNoPalco(chatCard);
+    lugar.style.height = r.h + 'px'; lugar.style.flex = getComputedStyle(chatCard).flex; chatCard.parentNode.insertBefore(lugar, chatCard);
+    palco.appendChild(chatCard); chatCard.classList.add('solto'); aplicar(chatCard, r);
+    chatCard.getBoundingClientRect();                       // força o navegador a registrar o ponto de partida
+    chatCard.classList.add('max'); aplicar(chatCard, ALVO);
+    icTam.setAttribute('d', 'M20 10h-6V4M4 14h6v6M14 10l7-7M10 14l-7 7'); bTam.title = 'Minimizar'; bTam.setAttribute('aria-label', 'Minimizar');
+    setTimeout(() => { animando = false; msgs.scrollTop = msgs.scrollHeight; }, 520);
+  }
+  function minimizar() {
+    if (!chatMax || animando) return; chatMax = false; animando = true;
+    chatCard.classList.remove('max'); aplicar(chatCard, retNoPalco(lugar));
+    icTam.setAttribute('d', 'M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7'); bTam.title = 'Maximizar'; bTam.setAttribute('aria-label', 'Maximizar');
+    setTimeout(() => {                                       // volta para a coluna, no tamanho original
+      lugar.parentNode.insertBefore(chatCard, lugar); lugar.remove();
+      chatCard.classList.remove('solto'); chatCard.removeAttribute('style'); animando = false; msgs.scrollTop = msgs.scrollHeight;
+    }, 520);
+  }
+  bTam.addEventListener('click', e => { e.stopPropagation(); chatMax ? minimizar() : maximizar(); });
+
+  // abre uma conversa real do Claude Code no chat. As do JARVIS continuam de onde pararam;
+  // as de outros projetos ficam como contexto (responder nelas direto é a fase 6)
+  async function abrirConversa(it) {
+    if (conv.ocupado) return;
+    document.getElementById('c-tema').textContent = '· ' + it.titulo.slice(0, 40);
+    msgs.innerHTML = ''; const espera = balao('Carregando a conversa…', false);
+    try {
+      const r = await fetch('/api/conversa?id=' + encodeURIComponent(it.id)); const c = await r.json();
+      if (!r.ok) throw new Error(c.erro);
+      msgs.innerHTML = '';
+      for (const m of c.mensagens) { const el = balao(m.texto, m.eu); if (m.quando) el.lastChild.textContent = new Date(m.quando).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); }
+      conv.id = Math.random().toString(36).slice(2);
+      if (c.doJarvis) { conv.sessao = c.sessao; conv.ref = null; conv.outra = null; }
+      else {
+        conv.sessao = null; conv.ref = it.id; conv.outra = null;
+        const av = balao(`Esta conversa é do projeto **${it.fonte}**. O que você escrever aqui começa uma conversa nova comigo, com ela como contexto.`, false);
+        const bt = document.createElement('button'); bt.className = 'continuar'; bt.textContent = `Continuar nesta sessão (em ${it.fonte})`;
+        bt.onclick = () => {
+          if (!confirm(`Continuar a própria sessão "${it.titulo}" no projeto ${it.fonte}?\n\nAs mensagens vão para aquela sessão do Claude Code, que roda na pasta do projeto, com as permissões dele. O que precisar de permissão aparece aqui como cartão.`)) return;
+          conv.outra = it.id; conv.ref = null; bt.remove();
+          document.getElementById('c-tema').textContent = `· ${it.titulo.slice(0, 26)} · em ${it.fonte}`;
+          balao(`Pronto: a próxima mensagem vai para a sessão em **${it.fonte}**.`, false);
+        };
+        av.firstChild.appendChild(document.createElement('br')); av.firstChild.appendChild(bt);
+      }
+    } catch (err) { espera.firstChild.textContent = 'Não consegui abrir a conversa: ' + err.message; }
+  }
+
+  // ---------- cidade, hora e temperatura (Open-Meteo, sem chave) ----------
+  // a cidade do setup vem primeiro; as outras são só para comparar o céu
+  const CIDADES = [[JARVIS.local.cidade, JARVIS.local.lat, JARVIS.local.lon, JARVIS.local.fuso], ['Rio de Janeiro', -22.91, -43.17, 'America/Sao_Paulo'],
+    ['São Paulo', -23.55, -46.63, 'America/Sao_Paulo'], ['Lisboa', 38.72, -9.14, 'Europe/Lisbon'], ['Nova York', 40.71, -74.01, 'America/New_York']]
+    .filter((c, i, a) => a.findIndex(x => x[0] === c[0]) === i);
+  const FUSOS = Object.fromEntries(CIDADES.map(c => [c[0], c[3]]));
+  const localEl = document.getElementById('local');
+  for (const [n, la, lo] of CIDADES) { const o = document.createElement('option'); o.value = `${la},${lo}`; o.textContent = n; localEl.appendChild(o); }
+  function relogioClima() {
+    const cidade = localEl.selectedOptions[0].textContent;
+    document.getElementById('c-cidade').textContent = cidade;
+    document.getElementById('c-hora').textContent = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: FUSOS[cidade] });
+  }
+  async function temperatura() {
+    const [lat, lon] = localEl.value.split(',');
+    try {
+      const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m`);
+      if (!r.ok) throw new Error(r.status);
+      const j = await r.json();
+      document.getElementById('c-temp').textContent = Math.round(j.current.temperature_2m) + ' °C';
+    } catch { document.getElementById('c-temp').textContent = '— °C'; setTimeout(temperatura, 30000); }   // o serviço às vezes responde 503: tenta de novo em 30 s
+  }
+  localEl.addEventListener('change', () => { relogioClima(); temperatura(); });
+  relogioClima(); temperatura();
+  setInterval(relogioClima, 10000); setInterval(temperatura, 15 * 60000);
+
+  // cintilação: só uma parte das estrelas, cada uma no seu ritmo
+  const brilhoCint = s => s.tf ? s.brilho * (1 - aj.cin * s.ta * (0.5 + 0.5 * Math.sin(tempo * s.tf * 6.28 + s.tp))) : s.brilho;
+
+  // ---------- lens flare ----------
+  const FANTASMAS = [
+    { t: 0.3, r: 4.5, cor: '255,214,150', a: .2 },
+    { t: 0.55, r: 13, cor: '120,210,225', a: .08, anel: true },
+    { t: 0.78, r: 6, cor: '200,150,255', a: .13 },
+    { t: 1.0, r: 19, cor: '150,190,255', a: .04, hex: true },
+    { t: 1.2, r: 17, cor: '255,190,110', a: .06, anel: true },
+    { t: 1.45, r: 3.5, cor: '255,240,220', a: .24 },
+    { t: 1.75, r: 9, cor: '140,220,200', a: .07 },
+  ];
+  function desenharFlare(par, nq) {
+    const ox = nq.X, oy = nq.Y;
+    const dx = 150 - pmx * 70, dy = 88 - pmy * 50;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (const f of FANTASMAS) {
+      const x = ox + dx * f.t, y = oy + dy * f.t;
+      if (f.anel) { ctx.strokeStyle = `rgba(${f.cor},${f.a * 1.8})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y, f.r, 0, Math.PI * 2); ctx.stroke(); }
+      if (f.hex) {   // fantasma hexagonal, como a abertura do diafragma
+        ctx.fillStyle = `rgba(${f.cor},${f.a})`; ctx.strokeStyle = `rgba(${f.cor},${f.a * 2})`; ctx.lineWidth = 0.8; ctx.beginPath();
+        for (let k = 0; k <= 6; k++) { const an = k * Math.PI / 3 + 0.3; k ? ctx.lineTo(x + Math.cos(an) * f.r, y + Math.sin(an) * f.r) : ctx.moveTo(x + Math.cos(an) * f.r, y + Math.sin(an) * f.r); }
+        ctx.fill(); ctx.stroke(); continue;
+      }
+      const g = ctx.createRadialGradient(x, y, 0, x, y, f.r);
+      g.addColorStop(0, `rgba(${f.cor},${f.a})`); g.addColorStop(0.7, `rgba(${f.cor},${f.a * 0.5})`); g.addColorStop(1, `rgba(${f.cor},0)`);
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, f.r, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // ---------- anel zodiacal com o céu real ----------
+  const SIGNOS = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓'].map(c => c + '︎');
+  const NOMES = ['Áries', 'Touro', 'Gêmeos', 'Câncer', 'Leão', 'Virgem', 'Libra', 'Escorpião', 'Sagitário', 'Capricórnio', 'Aquário', 'Peixes'];
+  const ANGULOS = [{ id: 'ASC', th: () => Math.PI }, { id: 'MC', th: () => thDe(MC) }, { id: 'DSC', th: () => 0 }];
+  const RAD = Math.PI / 180, EPS = 23.4392911 * RAD;
+  const norm = a => ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+  let ASC = 0, MC = 0, relogio = Date.now(), ultimoReal = Date.now();
+  function calcularCeu() {
+    const agoraReal = Date.now();
+    relogio += (agoraReal - ultimoReal) * (document.getElementById('acelerado').checked ? 3600 : 1); ultimoReal = agoraReal;
+    const [lat, lon] = document.getElementById('local').value.split(',').map(Number);
+    const jd = relogio / 86400000 + 2440587.5, d = jd - 2451545, T = d / 36525;
+    const gmst = 280.46061837 + 360.98564736629 * d + 0.000387933 * T * T;
+    const ramc = norm((gmst + lon) * RAD), phi = lat * RAD;
+    MC = norm(Math.atan2(Math.sin(ramc), Math.cos(ramc) * Math.cos(EPS)));
+    ASC = norm(Math.atan2(Math.cos(ramc), -(Math.sin(ramc) * Math.cos(EPS) + Math.tan(phi) * Math.sin(EPS))));
+  }
+  const thDe = lon => Math.PI + ASC - lon;
+  const SETOR = Math.PI / 6;
+  const signoEm = th => Math.floor(norm(Math.PI - th + ASC) / SETOR) % 12;
+  // libera o setor de baixo onde estão os centralizadores (cresce quando nasce um novo)
+  const someEmbaixo = th => {
+    const lim = Math.cos((GRUPOS.length - 1) / 2 * espHub(GRUPOS.length) + 0.24), s = Math.sin(th);
+    return s > lim ? Math.max(0, 1 - (s - lim) / 0.15) : 1;
+  };
+  function desenharZodiaco() {
+    calcularCeu();
+    const grau = lon => Math.floor((lon / RAD) % 30);
+    const R = { x: RING.rx + 20, y: RING.ry + 20 };
+    ctx.save(); ctx.translate(C.x - pmx * aj.par * 0.25, C.y - pmy * aj.par * 0.25);
+    for (let k = 0; k < 72; k++) {
+      const th = thDe(k * Math.PI / 36), f = someEmbaixo(th); if (f <= 0) continue;
+      const div = k % 6 === 0, r1 = div ? 1.0 : 1.012;
+      ctx.strokeStyle = `rgba(242,182,76,${(div ? .32 : .14) * f})`; ctx.lineWidth = div ? .8 : .6;
+      ctx.beginPath(); ctx.moveTo(Math.cos(th) * (RING.rx + 6) * r1, Math.sin(th) * (RING.ry + 6) * r1);
+      ctx.lineTo(Math.cos(th) * (RING.rx + 11), Math.sin(th) * (RING.ry + 11)); ctx.stroke();
+    }
+    const emAngulo = new Set(ANGULOS.map(a => signoEm(a.th())));
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (let i = 0; i < 12; i++) {
+      const th = thDe((i + 0.5) * SETOR), f = someEmbaixo(th); if (f <= 0) continue;
+      const aceso = emAngulo.has(i);
+      ctx.font = `${(aceso ? 15 : 13) * aj.fs}px "Apple Symbols", "Segoe UI Symbol", "Noto Sans Symbols", serif`;
+      ctx.fillStyle = aceso ? `rgba(246,170,110,${0.95 * f})` : `rgba(226,140,86,${0.62 * f})`;     // signos num meio-tom de laranja
+      ctx.fillText(SIGNOS[i], Math.cos(th) * R.x, Math.sin(th) * R.y);
+    }
+    ctx.font = `${10.5 * aj.fs}px Inter, system-ui, sans-serif`;
+    for (const a of ANGULOS) {
+      const th = a.th(), cx = Math.cos(th), cy = Math.sin(th);
+      ctx.strokeStyle = 'rgba(255,214,140,.55)'; ctx.lineWidth = .9;
+      ctx.beginPath(); ctx.moveTo(cx * (RING.rx - 6), cy * (RING.ry - 6)); ctx.lineTo(cx * (RING.rx + 32), cy * (RING.ry + 32)); ctx.stroke();
+      const i = signoEm(th), lon = a.id === 'ASC' ? ASC : a.id === 'DSC' ? norm(ASC + Math.PI) : MC;
+      ctx.fillStyle = 'rgba(255,214,140,.85)';
+      if (a.id === 'MC') { ctx.textAlign = cx < 0 ? 'right' : 'left'; ctx.fillText(`MC · ${NOMES[i]} ${grau(lon)}°`, cx * (RING.rx + 30) + (cx < 0 ? -6 : 6), cy * (RING.ry + 30)); }
+      else { ctx.textAlign = 'center'; const x = cx * (RING.rx + 22); ctx.fillText(a.id, x, -24); ctx.fillStyle = 'rgba(255,214,140,.6)'; ctx.fillText(`${NOMES[i]} ${grau(lon)}°`, x, -11); }
+    }
+    ctx.restore();
+  }
+
+  // ---------- luz central enquanto o JARVIS fala ----------
+  // ativa: liga e desliga suave com a resposta; pulso: sobe a cada trecho de texto e decai, no ritmo da fala
+  const fala = { ativa: 0, alvo: 0, pulso: 0, luz: 0 };
+  function atualizarFala(dt) {
+    fala.ativa += (fala.alvo - fala.ativa) * Math.min(1, dt * (fala.alvo ? 2.2 : 1.4));
+    fala.pulso *= Math.exp(-dt * 2.6);
+    const respira = 0.5 + 0.5 * Math.sin(tempo * 2.1);
+    fala.luz = fala.ativa < 0.005 ? 0 : fala.ativa * (0.42 + 0.18 * respira + 0.4 * Math.min(1, fala.pulso));
+  }
+
+  // ---------- chat ----------
+  const msgs = document.getElementById('msgs'), form = document.getElementById('form'), texto = document.getElementById('texto');
+  // o chat fala com o servidor local (servidor/servidor.py), que roda o Claude Code nesta pasta
+  const conv = { id: Math.random().toString(36).slice(2), sessao: null, ref: null, outra: null, ocupado: false, ctrl: null };
+  const hora = () => new Date().toTimeString().slice(0, 5);
+  const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  // markdown mínimo: código, negrito e itálico (o resto fica como texto, com as quebras de linha)
+  const md = s => esc(s).replace(/`([^`\n]+)`/g, '<code>$1</code>').replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>').replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+  function balao(txt, eu) {
+    const el = document.createElement('div'); el.className = 'msg' + (eu ? ' eu' : '');
+    el.innerHTML = '<span></span><i class="acao"></i><small></small>'; el.firstChild.innerHTML = md(txt); el.lastChild.textContent = hora();
+    msgs.appendChild(el); msgs.scrollTop = msgs.scrollHeight; return el;
+  }
+  const NOME_ACAO = { Read: 'lendo', Glob: 'procurando', Grep: 'buscando', WebSearch: 'pesquisando', WebFetch: 'abrindo', Edit: 'editando', Write: 'escrevendo', Bash: 'rodando', Task: 'delegando', Skill: 'usando a skill', ToolSearch: 'preparando as ferramentas' };
+  const nomeAcao = n => NOME_ACAO[n] || (/grafo/.test(n) ? 'consultando o grafo' : /Gmail/.test(n) ? 'olhando o Gmail' : /Calendar/.test(n) ? 'olhando a agenda' : /Drive/.test(n) ? 'olhando o Drive' : n.replace(/^mcp__[^_]+_+/, ''));
+  function saudar() {
+    msgs.innerHTML = ''; document.getElementById('c-tema').textContent = '';
+    balao(`Olá. O céu agora tem ascendente em ${NOMES[signoEm(Math.PI)]}. Em que posso ajudar?`, false);
+  }
+  // estrelas e conceitos que o JARVIS consultou: acendem e formam constelações
+  const VIDA_CONST = 9000;
+  let tocadosNaResposta = new Set(), constelacao = [], ultimoPonto = null;
+  function tocar(ev) {
+    const agora = performance.now(), novos = [];
+    for (const id of ev.estrelas || []) {
+      const ds = dados.filter(d => d.id === id && d.nasce >= 1); ds.forEach(d => d.aceso = 1);
+      if (ds[0] && !tocadosNaResposta.has(id)) { tocadosNaResposta.add(id); novos.push(ds[0]); }
+    }
+    for (const id of ev.conceitos || []) {
+      const c = porIdC[id]; if (!c) continue; c.aceso = 1;
+      if (!tocadosNaResposta.has(id)) { tocadosNaResposta.add(id); novos.push(c); }
+    }
+    fala.pulso = Math.min(1.4, fala.pulso + 0.25);
+    if (!novos.length) return;
+    const pts = novos.slice(0, 12);                       // uma constelação legível: até 12 pontos por consulta
+    pts.slice(0, 4).forEach(p => p.tocado = agora + 300);  // só 4 nomes aparecem, por poucos segundos
+    const dist = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
+    // começa no ponto mais perto de onde o raciocínio estava (ou do núcleo, na primeira consulta)
+    const de = ultimoPonto || 'nucleo', ref = de === 'nucleo' ? { x: C.x, y: C.y } : de;
+    let ini = pts.reduce((m, p) => dist(p, ref) < dist(m, ref) ? p : m, pts[0]);
+    let t = agora; constelacao.push({ a: de, b: ini, t }); t += 160;
+    // árvore mínima (Prim): liga cada ponto ao mais próximo já desenhado, em ordem de crescimento
+    const dentro = [ini], fora = pts.filter(p => p !== ini);
+    while (fora.length) {
+      let melhor = null;
+      for (const p of fora) for (const q of dentro) { const dd = dist(p, q); if (!melhor || dd < melhor.d) melhor = { p, q, d: dd }; }
+      constelacao.push({ a: melhor.q, b: melhor.p, t }); t += 110;
+      dentro.push(melhor.p); fora.splice(fora.indexOf(melhor.p), 1);
+    }
+    ultimoPonto = dentro[dentro.length - 1];
+    if (constelacao.length > 160) constelacao = constelacao.slice(-160);
+  }
+  // o JARVIS pausa e espera: o cartão mostra o quê, onde e o que muda; a decisão vale só para esta ação
+  function cartaoAutorizacao(ev) {
+    const el = document.createElement('div'); el.className = 'msg autoriza';
+    el.innerHTML = '<span><b></b><i class="onde"></i></span><div class="det"></div><div class="bts"><button class="sim">Autorizar</button><button class="nao">Recusar</button></div><small></small>';
+    el.querySelector('b').textContent = 'O JARVIS quer: ' + ev.titulo;
+    el.querySelector('.onde').textContent = ev.onde || '';
+    const det = el.querySelector('.det');
+    const bloco = (txt, cls) => { if (!txt) return; const pre = document.createElement('pre'); pre.className = cls; pre.textContent = txt; det.appendChild(pre); };
+    bloco(ev.detalhe, ''); bloco(ev.antes, 'antes'); bloco(ev.depois, 'depois');
+    el.lastChild.textContent = hora();
+    const decidir = async permitir => {
+      el.classList.add('respondida');
+      const r = await postar('/api/autorizacao', { id: ev.id, permitir });
+      const ok = r.ok; el.querySelector('.onde').textContent = (ev.onde ? ev.onde + ' · ' : '') + (!ok ? 'expirou' : permitir ? 'autorizado' : 'recusado');
+    };
+    el.querySelector('.sim').onclick = () => decidir(true); el.querySelector('.nao').onclick = () => decidir(false);
+    const ultimo = msgs.querySelector('.msg.digitando'); msgs.insertBefore(el, ultimo || null); msgs.scrollTop = msgs.scrollHeight;
+    if (chatCard.classList.contains('recolhido')) recolher('chat');
+    fala.pulso = 1.4;
+  }
+  async function enviar(t) {
+    tocadosNaResposta = new Set(); ultimoPonto = null;
+    conv.ocupado = true; balao(t, true);
+    const el = balao('', false), span = el.firstChild, acao = el.querySelector('.acao');
+    el.classList.add('digitando'); fala.alvo = 1;
+    let bruto = '';
+    conv.ctrl = new AbortController();
+    try {
+      const r = await fetch('/api/chat', { method: 'POST', signal: conv.ctrl.signal, headers: { 'Content-Type': 'application/json', 'X-Jarvis': '1' },
+        body: JSON.stringify({ texto: t, modelo: document.getElementById('modelo-nome').textContent, sessao: conv.sessao, conversa: conv.id, referencia: conv.ref, outra: conv.outra }) });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).erro || 'o servidor recusou o pedido');
+      const leitor = r.body.getReader(), dec = new TextDecoder(); let resto = '';
+      for (;;) {
+        const { value, done } = await leitor.read(); if (done) break;
+        resto += dec.decode(value, { stream: true });
+        const partes = resto.split('\n\n'); resto = partes.pop();
+        for (const p of partes) {
+          if (!p.startsWith('data: ')) continue;
+          const ev = JSON.parse(p.slice(6));
+          if (ev.tipo === 'sessao' && ev.id) { conv.sessao = ev.id; conv.ref = null; }
+          else if (ev.tipo === 'texto') { bruto += ev.t; span.innerHTML = md(bruto); acao.textContent = ''; fala.pulso = Math.min(1.4, fala.pulso + 0.18 + ev.t.length / 60); }
+          else if (ev.tipo === 'ferramenta') { acao.textContent = `${nomeAcao(ev.nome)}${ev.alvo ? ' ' + ev.alvo : ''}…`; fala.pulso = Math.min(1.4, fala.pulso + 0.3); }
+          else if (ev.tipo === 'tocou') { tocar(ev); }
+          else if (ev.tipo === 'autorizacao') { cartaoAutorizacao(ev); }
+          else if (ev.tipo === 'erro') { el.classList.add('erro'); bruto += (bruto ? '\n\n' : '') + ev.msg; span.innerHTML = md(bruto); }
+          else if (ev.tipo === 'fim') {
+            if (ev.sessao) conv.sessao = ev.sessao;
+            const n = tocadosNaResposta.size;
+            acao.textContent = ev.negadas && ev.negadas.length ? `sem permissão para: ${[...new Set(ev.negadas)].join(', ')}` : n ? `consultou ${n} ${n === 1 ? 'estrela' : 'estrelas'} do cluster` : '';
+          }
+          msgs.scrollTop = msgs.scrollHeight;
+        }
+      }
+      if (!bruto) { span.textContent = '(sem resposta)'; }
+    } catch (err) {
+      if (err.name !== 'AbortError') { el.classList.add('erro'); span.textContent = `Não consegui falar com o motor: ${err.message}. O servidor está ligado? (Abrir Jarvis.command)`; }
+    } finally {
+      el.classList.remove('digitando'); fala.alvo = 0; conv.ocupado = false; conv.ctrl = null;
+    }
+  }
+  // ditado: o reconhecimento de fala do próprio navegador (no Chrome o áudio vai para o Google; no Safari, para a Apple).
+  // Clique para começar, fale, clique de novo para parar; o texto entra no campo para você revisar e enviar.
+  (() => {
+    const RS = window.SpeechRecognition || window.webkitSpeechRecognition, bt = document.getElementById('mic');
+    if (!RS) { bt.hidden = true; return; }
+    let rec = null, base = '';
+    bt.addEventListener('click', () => {
+      if (rec) { rec.stop(); return; }
+      rec = new RS(); rec.lang = 'pt-BR'; rec.interimResults = true; rec.continuous = true;
+      base = texto.value ? texto.value.replace(/\s*$/, ' ') : '';
+      rec.onresult = ev => { let t = ''; for (const r of ev.results) t += r[0].transcript; texto.value = base + t; };
+      rec.onerror = ev => { if (ev.error === 'not-allowed') alert('O navegador não deu acesso ao microfone. Libere nas permissões do site.'); };
+      rec.onend = () => { rec = null; bt.classList.remove('ouvindo'); bt.title = 'Ditar (fala para texto)'; texto.focus(); };
+      rec.start(); bt.classList.add('ouvindo'); bt.title = 'Ouvindo… clique para parar';
+    });
+  })();
+  form.addEventListener('submit', e => {
+    e.preventDefault(); if (conv.ocupado) return;
+    const t = texto.value.trim(); if (!t) return; texto.value = '';
+    enviar(t);
+  });
+  document.getElementById('c-nova').addEventListener('click', e => {
+    e.stopPropagation();
+    if (conv.ctrl) { conv.ctrl.abort(); fetch('/api/parar', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Jarvis': '1' }, body: JSON.stringify({ conversa: conv.id }) }).catch(() => {}); }
+    conv.id = Math.random().toString(36).slice(2); conv.sessao = null; conv.ref = null; conv.outra = null; saudar();
+  });
+  setTimeout(saudar, 400);      // espera o primeiro quadro calcular o ascendente
+  // o "cérebro": a lista e o padrão vêm do setup (jarvis.config.json → cerebro)
+  for (const m of JARVIS.modelos) {
+    const li = document.createElement('li'); li.dataset.m = m.nome; li.className = m.nome === JARVIS.padrao ? 'sel' : '';
+    li.innerHTML = '<span></span><small></small>'; li.firstChild.textContent = m.nome; li.lastChild.textContent = m.nota || '';
+    document.getElementById('modelos').appendChild(li);
+  }
+  document.getElementById('modelo-nome').textContent = JARVIS.padrao;
+  const modelo = document.getElementById('modelo');
+  modelo.querySelector('button').addEventListener('click', e => { e.stopPropagation(); modelo.classList.toggle('aberto'); });
+  modelo.querySelectorAll('li').forEach(li => li.addEventListener('click', () => {
+    modelo.querySelectorAll('li').forEach(x => x.classList.toggle('sel', x === li));
+    document.getElementById('modelo-nome').textContent = li.dataset.m; modelo.classList.remove('aberto');
+  }));
+  addEventListener('click', () => modelo.classList.remove('aberto'));
+  texto.addEventListener('keydown', e => e.stopPropagation());
+
+  function desenharEstrela(x, y, tam, brilho, cor) {
+    if (x < -20 || x > W + 20 || y < -20 || y > H + 20) return;
+    if (tam < 0.85) { ctx.globalAlpha = Math.max(0, brilho); ctx.fillStyle = COR_PONTO[cor]; ctx.fillRect(x, y, tam, tam); ctx.globalAlpha = 1; return; }
+    const s = tam * 5.6; ctx.globalAlpha = Math.max(0, Math.min(1, brilho)); ctx.drawImage(SP[cor], x - s / 2, y - s / 2, s, s);
+    const c = Math.max(0.9, tam * 0.62); ctx.fillStyle = COR_PONTO[cor]; ctx.beginPath(); ctx.arc(x, y, c / 2, 0, 6.2832); ctx.fill();   // ponto nítido no centro
+    ctx.globalAlpha = 1;
+  }
+  window.jarvis = { dados: () => dados, palco: () => palco.getBoundingClientRect(), escala: () => escala, fala, conv, conceitos: () => conceitos, tocar };   // para testes no console
+  requestAnimationFrame(quadro);
+})();
+
+</script>
+</body>
+</html>

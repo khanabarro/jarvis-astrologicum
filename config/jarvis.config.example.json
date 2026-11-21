@@ -1,0 +1,32 @@
+{
+  "_leia": "Exemplo. O setup.py gera o seu jarvis.config.json (que fica fora do Git). Pode editar à mão depois.",
+  "usuario": {
+    "nome": "Ana",
+    "sobre": "Astróloga e designer. Trabalha com leituras natais e de revolução solar.",
+    "tom": "direto e caloroso",
+    "idioma": "português do Brasil"
+  },
+  "local": { "cidade": "São Paulo", "lat": -23.55, "lon": -46.63, "fuso": "America/Sao_Paulo" },
+  "cerebro": {
+    "padrao": "claude-sonnet-5-5",
+    "fundo": "claude-haiku-5-5",
+    "modelos": [
+      { "nome": "Opus 5.5", "id": "claude-opus-5-5", "nota": "mais capaz" },
+      { "nome": "Sonnet 5.5", "id": "claude-sonnet-5-5", "nota": "equilíbrio" },
+      { "nome": "Haiku 5.5", "id": "claude-haiku-5-5", "nota": "rápido" },
+      { "nome": "Fable 5.2", "id": "claude-fable-5-2", "nota": "criativo" }
+    ]
+  },
+  "nichos": [
+    { "id": "notas", "nome": "Notas", "tipo": "nota" },
+    { "id": "conversas", "nome": "Conversas", "tipo": "conversa" },
+    { "id": "skills", "nome": "Skills", "tipo": "skill" },
+    { "id": "artefatos", "nome": "Artefatos", "tipo": "artefato" },
+    { "id": "mapas", "nome": "Mapas astrais", "tipo": "artefato", "padrao": "natal|revolu[cç][aã]o.?solar|hor[aá]ria|sinastria" }
+  ],
+  "apps": [],
+  "conectores": { "gmail": true, "agenda": true, "drive": true },
+  "google_api": false,
+  "graphify": true,
+  "porta": 8742
+}
